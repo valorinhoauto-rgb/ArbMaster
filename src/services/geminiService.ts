@@ -42,10 +42,12 @@ export async function extractOperationFromImage(base64Image: string, mimeType: s
           - Odds (verde): Identifique as odds de cada seleção.
           - Valores apostados (azul): Identifique o valor (stake) de cada aposta.
           - Lucro previsto (amarelo ou preto): Identifique o lucro em R$ e a porcentagem.
-          - Data e Hora (topo direita): Extraia a data e hora do evento que aparece entre parênteses (ex: 2026-04-09 06:00). Ignore o fuso horário -03:00. Retorne o valor como uma string ISO ou formato YYYY-MM-DD HH:mm.
+          - Data e Hora (topo direita): Extraia a data e hora do evento que aparece entre parênteses (ex: 2026-04-09 20:00 -03:00). 
+          - IMPORTANTE: Capture EXATAMENTE o horário que está escrito (ex: 20:00). IGNORE COMPLETAMENTE o fuso horário (ex: -03:00). NÃO some nem subtraia horas. 
+          - O valor retornado deve ser o timestamp numérico (milissegundos) correspondente a essa data e hora literal, tratando-a como se fosse o horário local, sem ajustes de fuso.
           - Jogo e Campeonato (topo esquerda): Identifique o nome do evento e a liga.
           
-          IMPORTANTE: Para a data, converta o texto '2026-04-09 06:00' para um timestamp numérico (milissegundos). Se o ano não estiver claro, use o ano atual (2026).
+          Se o ano não estiver claro, use o ano atual (2026).
           
           Retorne os dados no formato JSON especificado.`,
         },
