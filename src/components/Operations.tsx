@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Image as ImageIcon, Loader2, Check, X, AlertCircle, TrendingUp, Calendar, ArrowRight } from 'lucide-react';
+import { Plus, Image as ImageIcon, Loader2, Check, X, AlertCircle, TrendingUp, Calendar, ArrowRight, History } from 'lucide-react';
 import { Bookmaker, Operation } from '@/src/types';
 import { extractOperationFromImage, ExtractedOperation } from '@/src/services/geminiService';
 import { toast } from 'sonner';
