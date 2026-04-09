@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Landmark, History, Settings, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Landmark, History, Settings, LogOut, Menu, X, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ export default function Layout({ children, activeTab, setActiveTab, userEmail, o
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'bookmakers', label: 'Casas de Aposta', icon: Landmark },
     { id: 'operations', label: 'Operações', icon: History },
+    { id: 'history', label: 'Histórico', icon: Calendar },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 

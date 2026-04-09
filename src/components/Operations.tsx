@@ -12,6 +12,7 @@ import { Bookmaker, Operation } from '@/src/types';
 import { extractOperationFromImage, ExtractedOperation } from '@/src/services/geminiService';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
+import { cn } from '@/lib/utils';
 
 interface OperationsProps {
   operations: Operation[];
@@ -28,8 +29,21 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
   const [isAiLoading, setIsAiLoading] = React.useState(false);
   const [extractedOps, setExtractedOps] = React.useState<ExtractedOperation[]>([]);
   const [selectedOp, setSelectedOp] = React.useState<Operation | null>(null);
+  const [showAllMonths, setShowAllMonths] = React.useState(false);
 
-  const completedOps = operations.filter(op => op.status === 'completed');
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const filteredOperations = React.useMemo(() => {
+    if (showAllMonths) return operations;
+    return operations.filter(op => {
+      const d = new Date(op.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+  }, [operations, showAllMonths, currentMonth, currentYear]);
+
+  const completedOps = filteredOperations.filter(op => op.status === 'completed');
   const totalProfit = completedOps.reduce((acc, op) => acc + op.profit, 0);
 
   // Calculate averages based on ALL operations that have a profit (completed)
@@ -39,14 +53,28 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
     return uniqueDays > 0 ? totalProfit / uniqueDays : 0;
   }, [completedOps, totalProfit]);
 
-  const monthlyAverage = React.useMemo(() => {
+  const monthlyProjection = React.useMemo(() => {
     if (completedOps.length === 0) return 0;
-    const uniqueMonths = new Set(completedOps.map(op => {
-      const d = new Date(op.date);
-      return `${d.getMonth()}-${d.getFullYear()}`;
-    })).size;
-    return uniqueMonths > 0 ? totalProfit / uniqueMonths : 0;
-  }, [completedOps, totalProfit]);
+    
+    const totalProfitMonth = completedOps.reduce((acc, op) => acc + op.profit, 0);
+    const uniqueDaysMonth = new Set(completedOps.map(op => new Date(op.date).toDateString())).size;
+    
+    if (uniqueDaysMonth === 0) return 0;
+    
+    const dailyAvgMonth = totalProfitMonth / uniqueDaysMonth;
+    
+    // Days in current month
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    
+    // Find first day of betting in current month
+    const firstOpDate = new Date(Math.min(...completedOps.map(op => new Date(op.date).getTime())));
+    const startDay = firstOpDate.getDate();
+    
+    // Days available for betting in the month (from start day to end of month)
+    const totalBettingDays = daysInMonth - startDay + 1;
+    
+    return dailyAvgMonth * totalBettingDays;
+  }, [completedOps, currentMonth, currentYear]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -142,9 +170,22 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h2 className="text-3xl font-bold tracking-tight">Operações</h2>
-          <p className="text-gray-400">Histórico e registro de arbitragens.</p>
+          <p className="text-gray-400">
+            {showAllMonths ? 'Histórico completo de operações.' : 'Operações do mês atual.'}
+          </p>
         </div>
         <div className="flex gap-3">
+          <Button 
+            variant="ghost" 
+            className={cn(
+              "gap-2 border border-white/10",
+              showAllMonths ? "bg-white/10 text-white" : "text-gray-400"
+            )}
+            onClick={() => setShowAllMonths(!showAllMonths)}
+          >
+            <History size={18} />
+            {showAllMonths ? 'Ver Mês Atual' : 'Ver Tudo'}
+          </Button>
           <div className="relative">
             <input
               type="file"
@@ -182,12 +223,12 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
         <Card className="bg-[#0f0f0f] border-white/10 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full bg-blue-400/10 blur-2xl group-hover:bg-blue-400/20 transition-all" />
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">Média Mensal</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-400">Projeção Mensal</CardTitle>
             <Calendar className="text-blue-400" size={18} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">R$ {monthlyAverage.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            <p className="text-xs text-gray-500 mt-1">Estimativa baseada no histórico</p>
+            <div className="text-2xl font-bold text-white">R$ {monthlyProjection.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <p className="text-xs text-gray-500 mt-1">Prospecção baseada na média diária</p>
           </CardContent>
         </Card>
       </div>
@@ -277,7 +318,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
               </TableRow>
             </TableHeader>
             <TableBody>
-              {operations.map((op) => (
+              {filteredOperations.map((op) => (
                 <TableRow key={op.id} className="border-white/5 hover:bg-white/5">
                   <TableCell className="font-medium">{new Date(op.date).toLocaleDateString('pt-BR')}</TableCell>
                   <TableCell>

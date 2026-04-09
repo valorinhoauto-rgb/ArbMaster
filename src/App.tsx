@@ -5,12 +5,14 @@
 
 import React from 'react';
 import { Toaster, toast } from 'sonner';
-import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, User, setDoc } from './firebase';
+import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc } from './firebase';
+import type { User } from './firebase';
 import { Bookmaker, Operation, Transaction } from './types';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Bookmakers from './components/Bookmakers';
 import Operations from './components/Operations';
+import MonthlyHistory from './components/MonthlyHistory';
 import Settings from './components/Settings';
 import Login from './components/Login';
 import { writeBatch } from './firebase';
@@ -331,6 +333,12 @@ export default function App() {
             onSettle={settleOperation}
             onDelete={deleteOperation}
             geminiKey={geminiKey}
+          />
+        )}
+        {activeTab === 'history' && (
+          <MonthlyHistory 
+            operations={operations}
+            transactions={transactions}
           />
         )}
         {activeTab === 'settings' && (

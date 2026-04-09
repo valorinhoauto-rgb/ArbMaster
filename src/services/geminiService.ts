@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 export interface ExtractedOperation {
   bookmaker1: string;
@@ -13,7 +13,7 @@ export interface ExtractedOperation {
   stake2: number;
   profit: number;
   profitPercentage: number;
-  date: number;
+  date: number; // We'll still return a number to the component
 }
 
 export async function extractOperationFromImage(base64Image: string, mimeType: string, customKey?: string): Promise<ExtractedOperation | null> {
@@ -44,7 +44,7 @@ export async function extractOperationFromImage(base64Image: string, mimeType: s
           - Lucro previsto (amarelo ou preto): Identifique o lucro em R$ e a porcentagem.
           - Data e Hora (topo direita): Extraia a data e hora do evento que aparece entre parênteses (ex: 2026-04-09 20:00 -03:00). 
           - IMPORTANTE: Capture EXATAMENTE o horário que está escrito (ex: 20:00). IGNORE COMPLETAMENTE o fuso horário (ex: -03:00). NÃO some nem subtraia horas. 
-          - O valor retornado deve ser o timestamp numérico (milissegundos) correspondente a essa data e hora literal, tratando-a como se fosse o horário local, sem ajustes de fuso.
+          - Retorne a data e hora no formato de string: "YYYY-MM-DD HH:mm".
           - Jogo e Campeonato (topo esquerda): Identifique o nome do evento e a liga.
           
           Se o ano não estiver claro, use o ano atual (2026).
@@ -55,29 +55,43 @@ export async function extractOperationFromImage(base64Image: string, mimeType: s
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: "object",
           properties: {
-            bookmaker1: { type: Type.STRING, description: "Nome da primeira casa de aposta" },
-            bookmaker2: { type: Type.STRING, description: "Nome da segunda casa de aposta" },
-            event: { type: Type.STRING, description: "Nome do jogo/evento" },
-            market: { type: Type.STRING, description: "Campeonato ou mercado principal" },
-            selection1: { type: Type.STRING, description: "Seleção na casa 1" },
-            selection2: { type: Type.STRING, description: "Seleção na casa 2" },
-            odds1: { type: Type.NUMBER, description: "Odd na casa 1" },
-            odds2: { type: Type.NUMBER, description: "Odd na casa 2" },
-            stake1: { type: Type.NUMBER, description: "Valor apostado na casa 1" },
-            stake2: { type: Type.NUMBER, description: "Valor apostado na casa 2" },
-            profit: { type: Type.NUMBER, description: "Lucro previsto em R$" },
-            profitPercentage: { type: Type.NUMBER, description: "Porcentagem de lucro" },
-            date: { type: Type.NUMBER, description: "Timestamp numérico (milissegundos) da data do evento" },
+            bookmaker1: { type: "string", description: "Nome da primeira casa de aposta" },
+            bookmaker2: { type: "string", description: "Nome da segunda casa de aposta" },
+            event: { type: "string", description: "Nome do jogo/evento" },
+            market: { type: "string", description: "Campeonato ou mercado principal" },
+            selection1: { type: "string", description: "Seleção na casa 1" },
+            selection2: { type: "string", description: "Seleção na casa 2" },
+            odds1: { type: "number", description: "Odd na casa 1" },
+            odds2: { type: "number", description: "Odd na casa 2" },
+            stake1: { type: "number", description: "Valor apostado na casa 1" },
+            stake2: { type: "number", description: "Valor apostado na casa 2" },
+            profit: { type: "number", description: "Lucro previsto em R$" },
+            profitPercentage: { type: "number", description: "Porcentagem de lucro" },
+            dateString: { type: "string", description: "Data e hora no formato YYYY-MM-DD HH:mm" },
           },
-          required: ["bookmaker1", "bookmaker2", "event", "market", "selection1", "selection2", "odds1", "odds2", "stake1", "stake2", "profit", "profitPercentage", "date"],
+          required: ["bookmaker1", "bookmaker2", "event", "market", "selection1", "selection2", "odds1", "odds2", "stake1", "stake2", "profit", "profitPercentage", "dateString"],
         },
       },
     });
 
     if (!response.text) return null;
-    return JSON.parse(response.text) as ExtractedOperation;
+    const data = JSON.parse(response.text);
+    
+    // Convert dateString to timestamp ignoring timezone (treat as local)
+    // Format: YYYY-MM-DD HH:mm
+    const [datePart, timePart] = data.dateString.split(' ');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, minute] = timePart.split(':').map(Number);
+    
+    // Use new Date(year, month-1, day, hour, minute) to get local timestamp
+    const timestamp = new Date(year, month - 1, day, hour, minute).getTime();
+
+    return {
+      ...data,
+      date: timestamp
+    } as ExtractedOperation;
   } catch (error) {
     console.error("Error extracting operation from image:", error);
     return null;
