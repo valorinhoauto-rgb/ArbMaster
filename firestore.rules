@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: bookmakers
+    // Fields:
+    //   - name: string (required)
+    //   - balance: number (required)
+    //   - isLimited: bool (required)
+    //   - createdAt: number (required)
+    //   - userId: string (required, immutable)
+    //
+    // Collection: operations
+    // Fields:
+    //   - date: number (required)
+    //   - bookmaker1Id: string (required)
+    //   - bookmaker2Id: string (required)
+    //   - event: string (required)
+    //   - market: string (required)
+    //   - selection1: string (required)
+    //   - selection2: string (required)
+    //   - odds1: number (required)
+    //   - odds2: number (required)
+    //   - stake1: number (required)
+    //   - stake2: number (required)
+    //   - profit: number (required)
+    //   - profitPercentage: number (required)
+    //   - status: string (required, enum: ['pending', 'completed', 'void'])
+    //   - result: string (optional, enum: ['win1', 'win2', 'void'])
+    //   - userId: string (required, immutable)
+    //
+    // Collection: transactions
+    // Fields:
+    //   - type: string (required, enum: ['deposit', 'withdrawal', 'transfer'])
+    //   - amount: number (required)
+    //   - bookmakerId: string (required)
+    //   - date: number (required)
+    //   - userId: string (required, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidBookmaker(data) {
+      return hasRequiredFields(['name', 'balance', 'isLimited', 'createdAt', 'userId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.balance is number &&
+             data.isLimited is bool &&
+             data.createdAt is number &&
+             data.userId is string;
+    }
+
+    function isValidOperation(data) {
+      return hasRequiredFields(['date', 'bookmaker1Id', 'bookmaker2Id', 'event', 'market', 'selection1', 'selection2', 'odds1', 'odds2', 'stake1', 'stake2', 'profit', 'profitPercentage', 'status', 'userId']) &&
+             data.date is number &&
+             data.bookmaker1Id is string &&
+             data.bookmaker2Id is string &&
+             data.event is string && data.event.size() < 200 &&
+             data.market is string && data.market.size() < 100 &&
+             data.selection1 is string &&
+             data.selection2 is string &&
+             data.odds1 is number &&
+             data.odds2 is number &&
+             data.stake1 is number &&
+             data.stake2 is number &&
+             data.profit is number &&
+             data.profitPercentage is number &&
+             data.status in ['pending', 'completed', 'void'] &&
+             (!('result' in data) || data.result in ['win1', 'win2', 'void']) &&
+             data.userId is string;
+    }
+
+    function isValidTransaction(data) {
+      return hasRequiredFields(['type', 'amount', 'bookmakerId', 'date', 'userId']) &&
+             data.type in ['deposit', 'withdrawal', 'transfer'] &&
+             data.amount is number &&
+             data.bookmakerId is string &&
+             data.date is number &&
+             data.userId is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /bookmakers/{bookmakerId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidBookmaker(request.resource.data) && isOwner(request.resource.data.userId);
+      allow update: if isDocOwner() && isValidBookmaker(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /operations/{operationId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidOperation(request.resource.data) && isOwner(request.resource.data.userId);
+      allow update: if isDocOwner() && isValidOperation(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data) && isOwner(request.resource.data.userId);
+      allow update: if isDocOwner() && isValidTransaction(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "Bookmaker": {
+      "title": "Bookmaker",
+      "description": "A sports betting house",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the bookmaker" },
+        "balance": { "type": "number", "description": "Current balance in the bookmaker" },
+        "isLimited": { "type": "boolean", "description": "Whether the bookmaker has limited the user" },
+        "createdAt": { "type": "number", "description": "Timestamp of creation" },
+        "userId": { "type": "string", "description": "ID of the user who owns this record" }
+      },
+      "required": ["name", "balance", "isLimited", "createdAt", "userId"]
+    },
+    "Operation": {
+      "title": "Operation",
+      "description": "An arbitrage operation between two bookmakers",
+      "type": "object",
+      "properties": {
+        "date": { "type": "number", "description": "Timestamp of the operation" },
+        "bookmaker1Id": { "type": "string", "description": "ID of the first bookmaker" },
+        "bookmaker2Id": { "type": "string", "description": "ID of the second bookmaker" },
+        "event": { "type": "string", "description": "Event name" },
+        "market": { "type": "string", "description": "Betting market" },
+        "selection1": { "type": "string", "description": "Selection in bookmaker 1" },
+        "selection2": { "type": "string", "description": "Selection in bookmaker 2" },
+        "odds1": { "type": "number", "description": "Odds in bookmaker 1" },
+        "odds2": { "type": "number", "description": "Odds in bookmaker 2" },
+        "stake1": { "type": "number", "description": "Stake in bookmaker 1" },
+        "stake2": { "type": "number", "description": "Stake in bookmaker 2" },
+        "profit": { "type": "number", "description": "Profit amount" },
+        "profitPercentage": { "type": "number", "description": "Profit percentage" },
+        "status": { "type": "string", "enum": ["pending", "completed", "void"] },
+        "result": { "type": "string", "enum": ["win1", "win2", "void"] },
+        "userId": { "type": "string", "description": "ID of the user who owns this record" }
+      },
+      "required": ["date", "bookmaker1Id", "bookmaker2Id", "event", "market", "selection1", "selection2", "odds1", "odds2", "stake1", "stake2", "profit", "profitPercentage", "status", "userId"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A deposit or withdrawal",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["deposit", "withdrawal", "transfer"] },
+        "amount": { "type": "number", "description": "Amount of the transaction" },
+        "bookmakerId": { "type": "string", "description": "ID of the bookmaker" },
+        "date": { "type": "number", "description": "Timestamp of the transaction" },
+        "userId": { "type": "string", "description": "ID of the user who owns this record" }
+      },
+      "required": ["type", "amount", "bookmakerId", "date", "userId"]
+    }
+  },
+  "firestore": {
+    "/bookmakers/{bookmakerId}": {
+      "schema": "Bookmaker",
+      "description": "User's bookmakers"
+    },
+    "/operations/{operationId}": {
+      "schema": "Operation",
+      "description": "User's arbitrage operations"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "User's deposits and withdrawals"
+    }
+  }
+}
