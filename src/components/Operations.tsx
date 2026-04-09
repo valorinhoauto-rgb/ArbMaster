@@ -20,9 +20,10 @@ interface OperationsProps {
   onUpdate: (id: string, updates: Partial<Operation>) => void;
   onSettle: (id: string, result: 'win1' | 'win2' | 'void') => void;
   onDelete: (id: string) => void;
+  geminiKey?: string;
 }
 
-export default function Operations({ operations, bookmakers, onAdd, onUpdate, onSettle, onDelete }: OperationsProps) {
+export default function Operations({ operations, bookmakers, onAdd, onUpdate, onSettle, onDelete, geminiKey }: OperationsProps) {
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
   const [extractedOps, setExtractedOps] = React.useState<ExtractedOperation[]>([]);
@@ -69,7 +70,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
       reader.readAsDataURL(file);
       const base64 = await promise;
       
-      const result = await extractOperationFromImage(base64, file.type);
+      const result = await extractOperationFromImage(base64, file.type, geminiKey);
       if (result) {
         newExtracted.push(result);
         toast.success(`Operação identificada: ${result.bookmaker1} vs ${result.bookmaker2}`);

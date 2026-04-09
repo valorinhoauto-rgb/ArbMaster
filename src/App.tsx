@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Toaster, toast } from 'sonner';
-import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, User } from './firebase';
+import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, User, setDoc } from './firebase';
 import { Bookmaker, Operation, Transaction } from './types';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
@@ -23,6 +23,7 @@ export default function App() {
   const [operations, setOperations] = React.useState<Operation[]>([]);
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [geminiKey, setGeminiKey] = React.useState<string>('');
 
   // Auth Listener
   React.useEffect(() => {
@@ -68,10 +69,17 @@ export default function App() {
       console.error("Error fetching transactions:", error);
     });
 
+    const unsubSettings = onSnapshot(doc(db, 'settings', user.uid), (snapshot) => {
+      if (snapshot.exists()) {
+        setGeminiKey(snapshot.data().geminiKey || '');
+      }
+    });
+
     return () => {
       unsubBookies();
       unsubOps();
       unsubTrans();
+      unsubSettings();
     };
   }, [user]);
 
@@ -268,6 +276,17 @@ export default function App() {
     }
   };
 
+  const saveGeminiKey = async (key: string) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'settings', user.uid), { geminiKey: key }, { merge: true });
+      toast.success("Chave Gemini salva com sucesso!");
+    } catch (error) {
+      console.error("Error saving Gemini key:", error);
+      toast.error("Erro ao salvar chave.");
+    }
+  };
+
   if (!isAuthReady) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -311,10 +330,15 @@ export default function App() {
             onUpdate={updateOperation} 
             onSettle={settleOperation}
             onDelete={deleteOperation}
+            geminiKey={geminiKey}
           />
         )}
         {activeTab === 'settings' && (
-          <Settings onReset={handleReset} />
+          <Settings 
+            onReset={handleReset} 
+            geminiKey={geminiKey}
+            onSaveGeminiKey={saveGeminiKey}
+          />
         )}
       </Layout>
       <Toaster position="top-right" theme="dark" />

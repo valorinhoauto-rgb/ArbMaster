@@ -1,7 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-
 export interface ExtractedOperation {
   bookmaker1: string;
   bookmaker2: string;
@@ -18,10 +16,18 @@ export interface ExtractedOperation {
   date: number;
 }
 
-export async function extractOperationFromImage(base64Image: string, mimeType: string): Promise<ExtractedOperation | null> {
+export async function extractOperationFromImage(base64Image: string, mimeType: string, customKey?: string): Promise<ExtractedOperation | null> {
   try {
+    const apiKey = customKey || process.env.GEMINI_API_KEY!;
+    if (!apiKey) {
+      console.error("No Gemini API key provided");
+      return null;
+    }
+    
+    const ai = new GoogleGenAI({ apiKey });
+    
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-latest",
       contents: [
         {
           inlineData: {

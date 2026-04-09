@@ -1,16 +1,25 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCcw, ShieldAlert } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { AlertTriangle, RefreshCcw, ShieldAlert, Key, Save, CheckCircle2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface SettingsProps {
   onReset: () => Promise<void>;
+  geminiKey: string;
+  onSaveGeminiKey: (key: string) => Promise<void>;
 }
 
-export default function Settings({ onReset }: SettingsProps) {
+export default function Settings({ onReset, geminiKey, onSaveGeminiKey }: SettingsProps) {
   const [isConfirming, setIsConfirming] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [tempKey, setTempKey] = React.useState(geminiKey);
+  const [isSavingKey, setIsSavingKey] = React.useState(false);
+
+  React.useEffect(() => {
+    setTempKey(geminiKey);
+  }, [geminiKey]);
 
   const handleReset = async () => {
     setIsLoading(true);
@@ -22,6 +31,15 @@ export default function Settings({ onReset }: SettingsProps) {
     }
   };
 
+  const handleSaveKey = async () => {
+    setIsSavingKey(true);
+    try {
+      await onSaveGeminiKey(tempKey);
+    } finally {
+      setIsSavingKey(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-2">
@@ -30,6 +48,50 @@ export default function Settings({ onReset }: SettingsProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="bg-[#0f0f0f] border-white/10">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Key className="text-purple-400" size={20} />
+              Integração Gemini AI
+            </CardTitle>
+            <CardDescription className="text-gray-500">
+              Configure sua chave de API para leitura automática de prints.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Chave de Backup (Opcional)</label>
+              <div className="flex gap-2">
+                <Input 
+                  type="password"
+                  placeholder="Cole sua chave API aqui..."
+                  className="bg-white/5 border-white/10 focus:border-purple-500/50"
+                  value={tempKey}
+                  onChange={(e) => setTempKey(e.target.value)}
+                />
+                <Button 
+                  className="bg-purple-600 hover:bg-purple-700 text-white shrink-0"
+                  onClick={handleSaveKey}
+                  disabled={isSavingKey || tempKey === geminiKey}
+                >
+                  {isSavingKey ? <RefreshCcw className="animate-spin" size={18} /> : <Save size={18} />}
+                </Button>
+              </div>
+              <p className="text-[10px] text-gray-500 leading-relaxed">
+                Se você deixar em branco, o sistema usará a chave padrão do servidor. 
+                Use uma chave própria se atingir limites de uso ou encontrar erros 503.
+              </p>
+            </div>
+            
+            {geminiKey && (
+              <div className="flex items-center gap-2 text-green-400 text-xs bg-green-400/5 p-2 rounded-lg border border-green-400/10">
+                <CheckCircle2 size={14} />
+                Chave personalizada ativa
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Card className="bg-[#0f0f0f] border-white/10">
           <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -89,18 +151,6 @@ export default function Settings({ onReset }: SettingsProps) {
                 </motion.div>
               )}
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#0f0f0f] border-white/10 opacity-50">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Preferências</CardTitle>
-            <CardDescription className="text-gray-500">
-              Em breve: Temas, moedas e notificações.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-500 italic">Funcionalidades de personalização serão adicionadas em futuras atualizações.</p>
           </CardContent>
         </Card>
       </div>
