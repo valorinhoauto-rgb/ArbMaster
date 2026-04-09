@@ -41,6 +41,10 @@ service cloud.firestore {
     //   - date: number (required)
     //   - userId: string (required, immutable)
     //
+    // Collection: settings
+    // Fields:
+    //   - geminiKey: string (optional)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -117,6 +121,11 @@ service cloud.firestore {
              data.userId is string;
     }
 
+    function isValidSettings(data) {
+      return hasOnlyAllowedFields(['geminiKey']) &&
+             (!('geminiKey' in data) || (data.geminiKey is string && data.geminiKey.size() < 200));
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -140,6 +149,11 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidTransaction(request.resource.data) && isOwner(request.resource.data.userId);
       allow update: if isDocOwner() && isValidTransaction(request.resource.data) && uidNotModified();
       allow delete: if isDocOwner();
+    }
+
+    match /settings/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidSettings(request.resource.data);
     }
 
     // Default deny
