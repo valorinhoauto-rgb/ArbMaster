@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 
+import Logo from './Logo';
+
 interface LayoutProps {
   children: React.ReactNode;
   activeTab: string;
@@ -28,9 +30,7 @@ export default function Layout({ children, activeTab, setActiveTab, userEmail, o
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex w-64 flex-col border-r border-white/10 bg-[#0f0f0f] p-6">
         <div className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-            <Landmark className="text-white" size={24} />
-          </div>
+          <Logo size={40} className="shadow-lg shadow-purple-500/20 rounded-xl" />
           <h1 className="text-xl font-bold tracking-tight">ArbMaster</h1>
         </div>
 
@@ -73,7 +73,7 @@ export default function Layout({ children, activeTab, setActiveTab, userEmail, o
       {/* Mobile Header */}
       <header className="md:hidden flex items-center justify-between p-4 border-b border-white/10 bg-[#0f0f0f]">
         <div className="flex items-center gap-2">
-          <Landmark className="text-purple-500" size={24} />
+          <Logo size={32} />
           <h1 className="text-lg font-bold">ArbMaster</h1>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
@@ -92,7 +92,7 @@ export default function Layout({ children, activeTab, setActiveTab, userEmail, o
           >
             <div className="flex items-center justify-between mb-10">
               <div className="flex items-center gap-2">
-                <Landmark className="text-purple-500" size={24} />
+                <Logo size={32} />
                 <h1 className="text-xl font-bold">ArbMaster</h1>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>

@@ -1,7 +1,9 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Landmark, Chrome } from 'lucide-react';
+import { Chrome } from 'lucide-react';
 import { motion } from 'motion/react';
+
+import Logo from './Logo';
 
 interface LoginProps {
   onLogin: () => void;
@@ -22,8 +24,8 @@ export default function Login({ onLogin, isLoading }: LoginProps) {
         className="w-full max-w-md space-y-8 relative z-10 dark"
       >
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-purple-600 rounded-3xl shadow-2xl shadow-purple-500/40 mb-4">
-            <Landmark className="text-white" size={40} />
+          <div className="flex justify-center mb-6">
+            <Logo size={80} className="shadow-2xl shadow-purple-500/40 rounded-3xl" />
           </div>
           <h1 className="text-4xl font-black tracking-tight text-white">ArbMaster</h1>
           <p className="text-gray-400 text-lg">A plataforma definitiva para gestão de arbitragem esportiva.</p>
