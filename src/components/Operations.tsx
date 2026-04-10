@@ -30,6 +30,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
   const [extractedOps, setExtractedOps] = React.useState<(ExtractedOperation & { tempId: string })[]>([]);
   const [selectedOp, setSelectedOp] = React.useState<Operation | null>(null);
   const [showAllMonths, setShowAllMonths] = React.useState(false);
+  const [sortBy, setSortBy] = React.useState<'date' | 'profit'>('date');
 
   const getDefaultDate = () => new Date().toISOString().slice(0, 16);
 
@@ -63,12 +64,21 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
   const currentYear = now.getFullYear();
 
   const filteredOperations = React.useMemo(() => {
-    if (showAllMonths) return operations;
-    return operations.filter(op => {
-      const d = new Date(op.date);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    let result = operations;
+    if (!showAllMonths) {
+      result = operations.filter(op => {
+        const d = new Date(op.date);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      });
+    }
+
+    return [...result].sort((a, b) => {
+      if (sortBy === 'profit') {
+        return b.profitPercentage - a.profitPercentage;
+      }
+      return b.date - a.date;
     });
-  }, [operations, showAllMonths, currentMonth, currentYear]);
+  }, [operations, showAllMonths, currentMonth, currentYear, sortBy]);
 
   const completedOps = filteredOperations.filter(op => op.status === 'completed');
   const totalProfit = completedOps.reduce((acc, op) => acc + op.profit, 0);
@@ -200,6 +210,15 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
           </p>
         </div>
         <div className="flex gap-3">
+          <Select value={sortBy} onValueChange={(v: 'date' | 'profit') => setSortBy(v)}>
+            <SelectTrigger className="w-[160px] bg-[#0f0f0f] border-white/10 text-gray-400 h-10">
+              <SelectValue placeholder="Ordenar por" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1a1a1a] border-white/10 text-white">
+              <SelectItem value="date">Data (Mais recente)</SelectItem>
+              <SelectItem value="profit">Maior Lucro (%)</SelectItem>
+            </SelectContent>
+          </Select>
           <Button 
             variant="ghost" 
             className={cn(
@@ -335,7 +354,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
               <TableRow className="border-white/10 hover:bg-transparent">
                 <TableHead className="text-gray-400 w-[100px]">Data</TableHead>
                 <TableHead className="text-gray-400">Evento</TableHead>
-                <TableHead className="text-gray-400">Casas</TableHead>
+                <TableHead className="text-gray-400 text-center w-[220px]">Casas</TableHead>
                 <TableHead className="text-gray-400 w-[120px]">Investimento</TableHead>
                 <TableHead className="text-gray-400 w-[140px]">Lucro</TableHead>
                 <TableHead className="text-gray-400 w-[100px]">Status</TableHead>
@@ -353,10 +372,18 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="border-white/10">{bookmakers.find(b => b.id === op.bookmaker1Id)?.name}</Badge>
-                      <span className="text-gray-600">vs</span>
-                      <Badge variant="outline" className="border-white/10">{bookmakers.find(b => b.id === op.bookmaker2Id)?.name}</Badge>
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 w-full max-w-[220px] mx-auto">
+                      <div className="flex justify-end">
+                        <Badge variant="outline" className="border-white/10 truncate max-w-[90px] justify-center">
+                          {bookmakers.find(b => b.id === op.bookmaker1Id)?.name}
+                        </Badge>
+                      </div>
+                      <span className="text-gray-600 text-[10px] font-bold uppercase">vs</span>
+                      <div className="flex justify-start">
+                        <Badge variant="outline" className="border-white/10 truncate max-w-[90px] justify-center">
+                          {bookmakers.find(b => b.id === op.bookmaker2Id)?.name}
+                        </Badge>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>R$ {(op.stake1 + op.stake2).toLocaleString('pt-BR')}</TableCell>
