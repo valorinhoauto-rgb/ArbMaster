@@ -14,7 +14,7 @@ interface BookmakersProps {
   onAdd: (name: string, balance: number) => void;
   onUpdate: (id: string, updates: Partial<Bookmaker>) => void;
   onDelete: (id: string) => void;
-  onTransaction: (bookmakerId: string, amount: number, type: 'deposit' | 'withdrawal') => void;
+  onTransaction: (bookmakerId: string, amount: number, type: 'deposit' | 'withdrawal' | 'adjustment') => void;
 }
 
 export default function Bookmakers({ bookmakers, onAdd, onUpdate, onDelete, onTransaction }: BookmakersProps) {
@@ -23,7 +23,7 @@ export default function Bookmakers({ bookmakers, onAdd, onUpdate, onDelete, onTr
   const [isAddOpen, setIsAddOpen] = React.useState(false);
 
   const [transactionAmount, setTransactionAmount] = React.useState('');
-  const [activeTransaction, setActiveTransaction] = React.useState<{ id: string, type: 'deposit' | 'withdrawal' } | null>(null);
+  const [activeTransaction, setActiveTransaction] = React.useState<{ id: string, type: 'deposit' | 'withdrawal' | 'adjustment' } | null>(null);
 
   const activeBookies = bookmakers.filter(b => !b.isLimited);
   const limitedBookies = bookmakers.filter(b => b.isLimited);
@@ -121,7 +121,7 @@ export default function Bookmakers({ bookmakers, onAdd, onUpdate, onDelete, onTr
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="flex-1 border-green-500/30 text-green-400 hover:bg-green-500/10 h-9"
+                      className="flex-1 border-green-500/30 text-green-400 hover:bg-green-500/10 h-9 text-[10px] sm:text-xs"
                       onClick={() => setActiveTransaction({ id: bookie.id, type: 'deposit' })}
                     >
                       Depósito
@@ -129,10 +129,18 @@ export default function Bookmakers({ bookmakers, onAdd, onUpdate, onDelete, onTr
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="flex-1 border-blue-500/30 text-blue-400 hover:bg-blue-500/10 h-9"
+                      className="flex-1 border-blue-500/30 text-blue-400 hover:bg-blue-500/10 h-9 text-[10px] sm:text-xs"
                       onClick={() => setActiveTransaction({ id: bookie.id, type: 'withdrawal' })}
                     >
                       Saque
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10 h-9 text-[10px] sm:text-xs"
+                      onClick={() => setActiveTransaction({ id: bookie.id, type: 'adjustment' })}
+                    >
+                      Prejuízo
                     </Button>
                   </div>
                 </div>
@@ -146,7 +154,8 @@ export default function Bookmakers({ bookmakers, onAdd, onUpdate, onDelete, onTr
         <DialogContent className="bg-[#0f0f0f] border-white/10 text-white">
           <DialogHeader>
             <DialogTitle>
-              {activeTransaction?.type === 'deposit' ? 'Realizar Depósito' : 'Realizar Saque'}
+              {activeTransaction?.type === 'deposit' ? 'Realizar Depósito' : 
+               activeTransaction?.type === 'withdrawal' ? 'Realizar Saque' : 'Registrar Prejuízo'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -163,9 +172,16 @@ export default function Bookmakers({ bookmakers, onAdd, onUpdate, onDelete, onTr
             </div>
             <Button 
               onClick={handleTransaction} 
-              className={`w-full ${activeTransaction?.type === 'deposit' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+              className={`w-full ${
+                activeTransaction?.type === 'deposit' ? 'bg-green-600 hover:bg-green-700' : 
+                activeTransaction?.type === 'withdrawal' ? 'bg-blue-600 hover:bg-blue-700' : 
+                'bg-red-600 hover:bg-red-700'
+              }`}
             >
-              Confirmar {activeTransaction?.type === 'deposit' ? 'Depósito' : 'Saque'}
+              Confirmar {
+                activeTransaction?.type === 'deposit' ? 'Depósito' : 
+                activeTransaction?.type === 'withdrawal' ? 'Saque' : 'Prejuízo'
+              }
             </Button>
           </div>
         </DialogContent>

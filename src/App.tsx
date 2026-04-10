@@ -144,13 +144,15 @@ export default function App() {
     }
   };
 
-  const handleTransaction = async (bookmakerId: string, amount: number, type: 'deposit' | 'withdrawal') => {
+  const handleTransaction = async (bookmakerId: string, amount: number, type: 'deposit' | 'withdrawal' | 'adjustment') => {
     if (!user) return;
     try {
       const bookie = bookmakers.find(b => b.id === bookmakerId);
       if (!bookie) return;
 
-      const newBalance = type === 'deposit' ? bookie.balance + amount : bookie.balance - amount;
+      let newBalance = bookie.balance;
+      if (type === 'deposit') newBalance += amount;
+      else if (type === 'withdrawal' || type === 'adjustment') newBalance -= amount;
       
       await updateDoc(doc(db, 'bookmakers', bookmakerId), { balance: newBalance });
       
@@ -162,7 +164,13 @@ export default function App() {
         userId: user.uid
       });
 
-      toast.success(`${type === 'deposit' ? 'Depósito' : 'Saque'} realizado com sucesso!`);
+      const labels = {
+        deposit: 'Depósito',
+        withdrawal: 'Saque',
+        adjustment: 'Ajuste/Prejuízo'
+      };
+
+      toast.success(`${labels[type]} realizado com sucesso!`);
     } catch (error) {
       console.error("Error processing transaction:", error);
       toast.error("Erro ao processar transação.");

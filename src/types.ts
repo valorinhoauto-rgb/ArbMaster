@@ -28,7 +28,7 @@ export interface Operation {
 
 export interface Transaction {
   id: string;
-  type: 'deposit' | 'withdrawal' | 'transfer';
+  type: 'deposit' | 'withdrawal' | 'transfer' | 'adjustment';
   amount: number;
   bookmakerId: string;
   date: number;
