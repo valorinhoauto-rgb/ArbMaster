@@ -75,6 +75,8 @@ export default function App() {
       if (snapshot.exists()) {
         setGeminiKey(snapshot.data().geminiKey || '');
       }
+    }, (error) => {
+      console.error("Error fetching settings:", error);
     });
 
     return () => {

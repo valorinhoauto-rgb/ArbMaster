@@ -11,7 +11,7 @@ import { Plus, Image as ImageIcon, Loader2, Check, X, AlertCircle, TrendingUp, C
 import { Bookmaker, Operation } from '@/src/types';
 import { extractOperationFromImage, ExtractedOperation } from '@/src/services/geminiService';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 
 interface OperationsProps {
@@ -27,15 +27,17 @@ interface OperationsProps {
 export default function Operations({ operations, bookmakers, onAdd, onUpdate, onSettle, onDelete, geminiKey }: OperationsProps) {
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
-  const [extractedOps, setExtractedOps] = React.useState<ExtractedOperation[]>([]);
+  const [extractedOps, setExtractedOps] = React.useState<(ExtractedOperation & { tempId: string })[]>([]);
   const [selectedOp, setSelectedOp] = React.useState<Operation | null>(null);
   const [showAllMonths, setShowAllMonths] = React.useState(false);
+
+  const getDefaultDate = () => new Date().toISOString().slice(0, 16);
 
   // Manual Form State
   const [manualOp, setManualOp] = React.useState({
     event: '',
     market: '',
-    date: new Date().toISOString().slice(0, 16), // Default to current local time for input
+    date: getDefaultDate(),
     bookmaker1Id: '',
     bookmaker2Id: '',
     selection1: '',
@@ -45,6 +47,16 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
     stake1: '',
     stake2: ''
   });
+
+  const manualCalculations = React.useMemo(() => {
+    const s1 = parseFloat(manualOp.stake1) || 0;
+    const s2 = parseFloat(manualOp.stake2) || 0;
+    const o1 = parseFloat(manualOp.odds1) || 0;
+    const total = s1 + s2;
+    const profit = total > 0 ? (s1 * o1) - total : 0;
+    const roi = total > 0 ? (profit / total) * 100 : 0;
+    return { profit, roi, total };
+  }, [manualOp.stake1, manualOp.stake2, manualOp.odds1]);
 
   const now = new Date();
   const currentMonth = now.getMonth();
@@ -101,7 +113,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
     if (files.length === 0) return;
 
     setIsAiLoading(true);
-    const newExtracted: ExtractedOperation[] = [];
+    const newExtracted: (ExtractedOperation & { tempId: string })[] = [];
 
     for (const file of files) {
       if (!file.type.startsWith('image/')) continue;
@@ -115,7 +127,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
       
       const result = await extractOperationFromImage(base64, file.type, geminiKey);
       if (result) {
-        newExtracted.push(result);
+        newExtracted.push({ ...result, tempId: Math.random().toString(36).substring(7) });
         toast.success(`Operação identificada: ${result.bookmaker1} vs ${result.bookmaker2}`);
       } else {
         toast.error(`Não foi possível ler o print: ${file.name}`);
@@ -126,7 +138,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
     setIsAiLoading(false);
   };
 
-  const handleCreateFromAi = (op: ExtractedOperation) => {
+  const handleCreateFromAi = (op: ExtractedOperation & { tempId: string }) => {
     const b1 = bookmakers.find(b => b.name.toLowerCase().includes(op.bookmaker1.toLowerCase()));
     const b2 = bookmakers.find(b => b.name.toLowerCase().includes(op.bookmaker2.toLowerCase()));
 
@@ -152,7 +164,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
       status: 'pending'
     });
 
-    setExtractedOps(prev => prev.filter(item => item !== op));
+    setExtractedOps(prev => prev.filter(item => item.tempId !== op.tempId));
     toast.success("Operação criada com sucesso!");
   };
 
@@ -177,8 +189,6 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
   }, []);
-
-  const activeBookies = bookmakers.filter(b => !b.isLimited);
 
   return (
     <div className="space-y-8">
@@ -258,15 +268,15 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-4">
-              {extractedOps.map((op, i) => (
-                <div key={i} className="p-6 rounded-xl bg-white/5 border border-white/10 space-y-4">
+              {extractedOps.map((op) => (
+                <div key={op.tempId} className="p-6 rounded-xl bg-white/5 border border-white/10 space-y-4">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
                       <Badge className="bg-purple-600">{op.bookmaker1}</Badge>
                       <ArrowRight size={14} className="text-gray-500" />
                       <Badge className="bg-purple-600">{op.bookmaker2}</Badge>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExtractedOps(prev => prev.filter((_, idx) => idx !== i))}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExtractedOps(prev => prev.filter(item => item.tempId !== op.tempId))}>
                       <X size={18} />
                     </Button>
                   </div>
@@ -572,26 +582,13 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
               <div>
                 <p className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Lucro Previsto</p>
                 <p className="text-xl font-black text-green-400">
-                  R$ {(() => {
-                    const s1 = parseFloat(manualOp.stake1) || 0;
-                    const s2 = parseFloat(manualOp.stake2) || 0;
-                    const o1 = parseFloat(manualOp.odds1) || 0;
-                    const total = s1 + s2;
-                    return total > 0 ? ((s1 * o1) - total).toFixed(2) : "0.00";
-                  })()}
+                  R$ {manualCalculations.profit.toFixed(2)}
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">ROI Estimado</p>
                 <p className="text-xl font-black text-purple-400">
-                  {(() => {
-                    const s1 = parseFloat(manualOp.stake1) || 0;
-                    const s2 = parseFloat(manualOp.stake2) || 0;
-                    const o1 = parseFloat(manualOp.odds1) || 0;
-                    const total = s1 + s2;
-                    const profit = (s1 * o1) - total;
-                    return total > 0 ? ((profit / total) * 100).toFixed(2) : "0.00";
-                  })()}%
+                  {manualCalculations.roi.toFixed(2)}%
                 </p>
               </div>
             </div>
@@ -609,10 +606,6 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                   return;
                 }
 
-                const totalStake = s1 + s2;
-                const profit = (s1 * o1) - totalStake;
-                const profitPercentage = parseFloat(((profit / totalStake) * 100).toFixed(2));
-
                 onAdd({
                   date: new Date(manualOp.date).getTime(),
                   event: manualOp.event,
@@ -625,14 +618,14 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                   odds2: o2,
                   stake1: s1,
                   stake2: s2,
-                  profit,
-                  profitPercentage,
+                  profit: manualCalculations.profit,
+                  profitPercentage: parseFloat(manualCalculations.roi.toFixed(2)),
                   status: 'pending'
                 });
 
                 setIsAddOpen(false);
                 setManualOp({
-                  event: '', market: '', date: new Date().toISOString().slice(0, 16),
+                  event: '', market: '', date: getDefaultDate(),
                   bookmaker1Id: '', bookmaker2Id: '',
                   selection1: '', selection2: '', odds1: '', odds2: '', stake1: '', stake2: ''
                 });
