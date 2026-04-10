@@ -4,20 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, RotateCcw, Edit2, Landmark } from 'lucide-react';
-import { Bookmaker } from '@/src/types';
+import { Plus, Trash2, RotateCcw, Edit2, Landmark, History, TrendingUp, DollarSign } from 'lucide-react';
+import { Bookmaker, Operation } from '@/src/types';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'motion/react';
+import { cn } from '@/lib/utils';
 
 interface BookmakersProps {
   bookmakers: Bookmaker[];
+  operations: Operation[];
   onAdd: (name: string, balance: number) => void;
   onUpdate: (id: string, updates: Partial<Bookmaker>) => void;
   onDelete: (id: string) => void;
   onTransaction: (bookmakerId: string, amount: number, type: 'deposit' | 'withdrawal' | 'adjustment') => void;
 }
 
-export default function Bookmakers({ bookmakers, onAdd, onUpdate, onDelete, onTransaction }: BookmakersProps) {
+export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, onDelete, onTransaction }: BookmakersProps) {
   const [newName, setNewName] = React.useState('');
   const [newBalance, setNewBalance] = React.useState('');
   const [isAddOpen, setIsAddOpen] = React.useState(false);
@@ -27,6 +29,28 @@ export default function Bookmakers({ bookmakers, onAdd, onUpdate, onDelete, onTr
 
   const activeBookies = bookmakers.filter(b => !b.isLimited);
   const limitedBookies = bookmakers.filter(b => b.isLimited);
+
+  const getBookieStats = (bookieId: string) => {
+    const bookieOps = operations.filter(op => op.bookmaker1Id === bookieId || op.bookmaker2Id === bookieId);
+    const volume = bookieOps.reduce((acc, op) => {
+      if (op.bookmaker1Id === bookieId) return acc + op.stake1;
+      if (op.bookmaker2Id === bookieId) return acc + op.stake2;
+      return acc;
+    }, 0);
+
+    const profit = bookieOps.reduce((acc, op) => {
+      if (op.status !== 'completed') return acc;
+      if (op.bookmaker1Id === bookieId) {
+        return op.result === 'win1' ? acc + (op.stake1 * op.odds1 - op.stake1) : acc - op.stake1;
+      }
+      if (op.bookmaker2Id === bookieId) {
+        return op.result === 'win2' ? acc + (op.stake2 * op.odds2 - op.stake2) : acc - op.stake2;
+      }
+      return acc;
+    }, 0);
+
+    return { volume, profit, count: bookieOps.length };
+  };
 
   const handleAdd = () => {
     if (newName && newBalance) {
@@ -188,30 +212,71 @@ export default function Bookmakers({ bookmakers, onAdd, onUpdate, onDelete, onTr
       </Dialog>
 
       {limitedBookies.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold text-red-400 flex items-center gap-2">
-            <Trash2 size={20} />
-            Casas Limitadas (Lixo)
-          </h3>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between border-b border-red-900/20 pb-4">
+            <h3 className="text-xl font-bold text-red-400 flex items-center gap-2">
+              <History size={24} />
+              Histórico de Casas Limitadas
+            </h3>
+            <Badge variant="outline" className="border-red-900/30 text-red-400">
+              {limitedBookies.length} {limitedBookies.length === 1 ? 'Casa' : 'Casas'}
+            </Badge>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {limitedBookies.map((bookie) => (
-              <Card key={bookie.id} className="bg-[#0f0f0f]/50 border-red-900/20 opacity-60 grayscale hover:grayscale-0 transition-all">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-lg font-bold text-gray-400">{bookie.name}</CardTitle>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-green-400" onClick={() => onUpdate(bookie.id, { isLimited: false })}>
-                      <RotateCcw size={16} />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-400" onClick={() => onDelete(bookie.id)}>
-                      <Trash2 size={16} />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Badge variant="destructive" className="bg-red-900/20 text-red-400 border-red-900/30">Limitada</Badge>
-                </CardContent>
-              </Card>
-            ))}
+            {limitedBookies.map((bookie) => {
+              const stats = getBookieStats(bookie.id);
+              return (
+                <Card key={bookie.id} className="bg-[#0f0f0f]/80 border-red-900/20 hover:border-red-500/30 transition-all group overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full bg-red-500/5 blur-3xl group-hover:bg-red-500/10 transition-all" />
+                  
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div className="space-y-1">
+                      <CardTitle className="text-lg font-bold text-gray-200">{bookie.name}</CardTitle>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-500 uppercase font-bold">
+                        <span>{new Date(bookie.createdAt).toLocaleDateString('pt-BR')}</span>
+                        <span>•</span>
+                        <span className="text-red-400">{bookie.limitedAt ? new Date(bookie.limitedAt).toLocaleDateString('pt-BR') : 'Limitada'}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-green-400 hover:bg-green-400/10" onClick={() => onUpdate(bookie.id, { isLimited: false })}>
+                        <RotateCcw size={16} />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-red-400 hover:bg-red-400/10" onClick={() => onDelete(bookie.id)}>
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1">
+                          <TrendingUp size={10} /> Volume
+                        </p>
+                        <p className="text-sm font-bold text-white">R$ {stats.volume.toLocaleString('pt-BR')}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1">
+                          <DollarSign size={10} /> Lucro/Preju
+                        </p>
+                        <p className={cn("text-sm font-bold", stats.profit >= 0 ? "text-green-400" : "text-red-400")}>
+                          R$ {stats.profit.toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="pt-3 border-t border-white/5 flex justify-between items-center">
+                      <span className="text-[10px] text-gray-500 font-bold uppercase">Total de Apostas</span>
+                      <Badge variant="secondary" className="bg-white/5 text-gray-400 border-white/10">
+                        {stats.count}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}

@@ -4,6 +4,7 @@ export interface Bookmaker {
   balance: number;
   isLimited: boolean;
   createdAt: number;
+  limitedAt?: number;
 }
 
 export interface Operation {

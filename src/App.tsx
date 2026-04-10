@@ -126,7 +126,16 @@ export default function App() {
 
   const updateBookmaker = async (id: string, updates: Partial<Bookmaker>) => {
     try {
-      await updateDoc(doc(db, 'bookmakers', id), updates);
+      const finalUpdates = { ...updates };
+      if (updates.isLimited === true) {
+        finalUpdates.limitedAt = Date.now();
+      } else if (updates.isLimited === false) {
+        // If unlimiting, we might want to clear limitedAt or keep it? 
+        // Let's clear it to indicate it's active again.
+        finalUpdates.limitedAt = undefined;
+      }
+      
+      await updateDoc(doc(db, 'bookmakers', id), finalUpdates as any);
       toast.success("Casa atualizada!");
     } catch (error) {
       console.error("Error updating bookmaker:", error);
@@ -328,6 +337,7 @@ export default function App() {
         {activeTab === 'bookmakers' && (
           <Bookmakers 
             bookmakers={bookmakers} 
+            operations={operations}
             onAdd={addBookmaker} 
             onUpdate={updateBookmaker} 
             onDelete={deleteBookmaker} 
