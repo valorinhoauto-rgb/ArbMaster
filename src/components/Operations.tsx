@@ -31,6 +31,21 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
   const [selectedOp, setSelectedOp] = React.useState<Operation | null>(null);
   const [showAllMonths, setShowAllMonths] = React.useState(false);
 
+  // Manual Form State
+  const [manualOp, setManualOp] = React.useState({
+    event: '',
+    market: '',
+    date: new Date().toISOString().slice(0, 16), // Default to current local time for input
+    bookmaker1Id: '',
+    bookmaker2Id: '',
+    selection1: '',
+    selection2: '',
+    odds1: '',
+    odds2: '',
+    stake1: '',
+    stake2: ''
+  });
+
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
@@ -404,6 +419,231 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent className="bg-[#0f0f0f] border-white/10 text-white !max-w-[800px] !w-[95vw] max-h-[98vh] overflow-y-auto p-0 gap-0 shadow-2xl shadow-purple-500/20">
+          <DialogHeader className="p-4 border-b border-white/10 bg-white/[0.02]">
+            <DialogTitle className="text-lg font-bold tracking-tight uppercase">Nova Operação Manual</DialogTitle>
+          </DialogHeader>
+          
+          <div className="p-5 space-y-4">
+            {/* Top Info Grid - 3 Columns */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-gray-500 text-[9px] uppercase tracking-wider font-bold">Evento / Jogo</Label>
+                <Input 
+                  placeholder="Ex: Flamengo vs Palmeiras" 
+                  className="bg-white/5 border-white/10 h-9 text-xs focus:ring-purple-500/50 transition-all rounded-lg"
+                  value={manualOp.event}
+                  onChange={(e) => setManualOp({...manualOp, event: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-gray-500 text-[9px] uppercase tracking-wider font-bold">Mercado / Campeonato</Label>
+                <Input 
+                  placeholder="Ex: Brasileirão - AH 0.0" 
+                  className="bg-white/5 border-white/10 h-9 text-xs focus:ring-purple-500/50 transition-all rounded-lg"
+                  value={manualOp.market}
+                  onChange={(e) => setManualOp({...manualOp, market: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-gray-500 text-[9px] uppercase tracking-wider font-bold">Data e Hora</Label>
+                <Input 
+                  type="datetime-local"
+                  className="bg-white/5 border-white/10 h-9 text-xs text-white scheme-dark focus:ring-purple-500/50 transition-all rounded-lg"
+                  value={manualOp.date}
+                  onChange={(e) => setManualOp({...manualOp, date: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* Entries Grid - 2 Columns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Bookmaker 1 */}
+              <div className="space-y-3 p-4 rounded-xl bg-white/[0.02] border border-white/10 hover:border-purple-500/30 transition-all relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-0.5 bg-purple-600" />
+                <h3 className="font-bold text-[11px] uppercase text-purple-500">Entrada 01</h3>
+                
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-gray-500 text-[9px] font-bold uppercase">Casa de Aposta</Label>
+                    <Select value={manualOp.bookmaker1Id} onValueChange={(v) => setManualOp({...manualOp, bookmaker1Id: v})}>
+                      <SelectTrigger className="bg-white/5 border-white/10 h-8 text-xs rounded-lg">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-white/10 text-white">
+                        {bookmakers.map(b => (
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-gray-500 text-[9px] font-bold uppercase">Seleção</Label>
+                    <Input 
+                      placeholder="Ex: Flamengo" 
+                      className="bg-white/5 border-white/10 h-8 text-xs rounded-lg"
+                      value={manualOp.selection1}
+                      onChange={(e) => setManualOp({...manualOp, selection1: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-gray-500 text-[9px] font-bold uppercase">Odd</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        className="bg-white/5 border-white/10 h-8 text-xs font-bold rounded-lg"
+                        value={manualOp.odds1}
+                        onChange={(e) => setManualOp({...manualOp, odds1: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-gray-500 text-[9px] font-bold uppercase">Stake (R$)</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        className="bg-white/5 border-white/10 h-8 text-xs font-bold text-green-400 rounded-lg"
+                        value={manualOp.stake1}
+                        onChange={(e) => setManualOp({...manualOp, stake1: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bookmaker 2 */}
+              <div className="space-y-3 p-4 rounded-xl bg-white/[0.02] border border-white/10 hover:border-blue-500/30 transition-all relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-0.5 bg-blue-600" />
+                <h3 className="font-bold text-[11px] uppercase text-blue-500">Entrada 02</h3>
+                
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-gray-500 text-[9px] font-bold uppercase">Casa de Aposta</Label>
+                    <Select value={manualOp.bookmaker2Id} onValueChange={(v) => setManualOp({...manualOp, bookmaker2Id: v})}>
+                      <SelectTrigger className="bg-white/5 border-white/10 h-8 text-xs rounded-lg">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-white/10 text-white">
+                        {bookmakers.map(b => (
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-gray-500 text-[9px] font-bold uppercase">Seleção</Label>
+                    <Input 
+                      placeholder="Ex: Palmeiras" 
+                      className="bg-white/5 border-white/10 h-8 text-xs rounded-lg"
+                      value={manualOp.selection2}
+                      onChange={(e) => setManualOp({...manualOp, selection2: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-gray-500 text-[9px] font-bold uppercase">Odd</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        className="bg-white/5 border-white/10 h-8 text-xs font-bold rounded-lg"
+                        value={manualOp.odds2}
+                        onChange={(e) => setManualOp({...manualOp, odds2: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-gray-500 text-[9px] font-bold uppercase">Stake (R$)</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        className="bg-white/5 border-white/10 h-8 text-xs font-bold text-green-400 rounded-lg"
+                        value={manualOp.stake2}
+                        onChange={(e) => setManualOp({...manualOp, stake2: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary Card - Ultra Compact */}
+            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-600/10 to-blue-600/10 border border-white/10 flex justify-between items-center">
+              <div>
+                <p className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Lucro Previsto</p>
+                <p className="text-xl font-black text-green-400">
+                  R$ {(() => {
+                    const s1 = parseFloat(manualOp.stake1) || 0;
+                    const s2 = parseFloat(manualOp.stake2) || 0;
+                    const o1 = parseFloat(manualOp.odds1) || 0;
+                    const total = s1 + s2;
+                    return total > 0 ? ((s1 * o1) - total).toFixed(2) : "0.00";
+                  })()}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">ROI Estimado</p>
+                <p className="text-xl font-black text-purple-400">
+                  {(() => {
+                    const s1 = parseFloat(manualOp.stake1) || 0;
+                    const s2 = parseFloat(manualOp.stake2) || 0;
+                    const o1 = parseFloat(manualOp.odds1) || 0;
+                    const total = s1 + s2;
+                    const profit = (s1 * o1) - total;
+                    return total > 0 ? ((profit / total) * 100).toFixed(2) : "0.00";
+                  })()}%
+                </p>
+              </div>
+            </div>
+
+            <Button 
+              className="w-full h-11 text-xs font-bold bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-600/20 transition-all active:scale-[0.98] rounded-lg uppercase tracking-widest"
+              onClick={() => {
+                const s1 = parseFloat(manualOp.stake1);
+                const s2 = parseFloat(manualOp.stake2);
+                const o1 = parseFloat(manualOp.odds1);
+                const o2 = parseFloat(manualOp.odds2);
+                
+                if (!manualOp.event || !manualOp.bookmaker1Id || !manualOp.bookmaker2Id || isNaN(s1) || isNaN(s2) || isNaN(o1) || isNaN(o2)) {
+                  toast.error("Preencha todos os campos obrigatórios corretamente.");
+                  return;
+                }
+
+                const totalStake = s1 + s2;
+                const profit = (s1 * o1) - totalStake;
+                const profitPercentage = parseFloat(((profit / totalStake) * 100).toFixed(2));
+
+                onAdd({
+                  date: new Date(manualOp.date).getTime(),
+                  event: manualOp.event,
+                  market: manualOp.market,
+                  bookmaker1Id: manualOp.bookmaker1Id,
+                  bookmaker2Id: manualOp.bookmaker2Id,
+                  selection1: manualOp.selection1,
+                  selection2: manualOp.selection2,
+                  odds1: o1,
+                  odds2: o2,
+                  stake1: s1,
+                  stake2: s2,
+                  profit,
+                  profitPercentage,
+                  status: 'pending'
+                });
+
+                setIsAddOpen(false);
+                setManualOp({
+                  event: '', market: '', date: new Date().toISOString().slice(0, 16),
+                  bookmaker1Id: '', bookmaker2Id: '',
+                  selection1: '', selection2: '', odds1: '', odds2: '', stake1: '', stake2: ''
+                });
+                toast.success("Operação manual registrada!");
+              }}
+            >
+              REGISTRAR OPERAÇÃO
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!selectedOp} onOpenChange={(open) => !open && setSelectedOp(null)}>
         <DialogContent className="bg-[#0f0f0f] border-white/10 text-white max-w-2xl">
