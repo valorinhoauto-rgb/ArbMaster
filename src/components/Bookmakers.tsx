@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, RotateCcw, Edit2, Landmark, History, TrendingUp, DollarSign } from 'lucide-react';
+import { Plus, Trash2, RotateCcw, Edit2, Landmark, History, TrendingUp, DollarSign, Ban, Info } from 'lucide-react';
 import { Bookmaker, Operation } from '@/src/types';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'motion/react';
@@ -126,10 +126,42 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
                   <div className="w-10 h-10 rounded-xl bg-purple-600/20 flex items-center justify-center text-purple-400">
                     <Landmark size={20} />
                   </div>
-                  <CardTitle className="text-lg font-bold">{bookie.name}</CardTitle>
+                  <div className="flex flex-col">
+                    <CardTitle className="text-lg font-bold">{bookie.name}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const stats = getBookieStats(bookie.id);
+                        const roi = stats.volume > 0 ? (stats.profit / stats.volume) * 100 : 0;
+                        return (
+                          <>
+                            <span className={cn("text-[10px] font-bold", stats.profit >= 0 ? "text-green-400" : "text-red-400")}>
+                              {roi.toFixed(1)}% ROI
+                            </span>
+                            <span className="text-[10px] text-gray-500">•</span>
+                            <span className="text-[10px] text-gray-500 font-bold">{stats.count} bets</span>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white" onClick={() => onUpdate(bookie.id, { isLimited: true })}>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-gray-400 hover:text-red-400 hover:bg-red-400/10" 
+                    onClick={() => onUpdate(bookie.id, { isLimited: true })}
+                    title="Marcar como Limitada"
+                  >
+                    <Ban size={16} />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-600/10" 
+                    onClick={() => onDelete(bookie.id)}
+                    title="Excluir Permanentemente"
+                  >
                     <Trash2 size={16} />
                   </Button>
                 </div>
