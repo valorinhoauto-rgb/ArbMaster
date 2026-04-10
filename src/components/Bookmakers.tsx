@@ -32,24 +32,25 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
 
   const getBookieStats = (bookieId: string) => {
     const bookieOps = operations.filter(op => op.bookmaker1Id === bookieId || op.bookmaker2Id === bookieId);
+    
+    // Volume is the stake in THIS bookmaker
     const volume = bookieOps.reduce((acc, op) => {
       if (op.bookmaker1Id === bookieId) return acc + op.stake1;
       if (op.bookmaker2Id === bookieId) return acc + op.stake2;
       return acc;
     }, 0);
 
-    const profit = bookieOps.reduce((acc, op) => {
-      if (op.status !== 'completed') return acc;
-      if (op.bookmaker1Id === bookieId) {
-        return op.result === 'win1' ? acc + (op.stake1 * op.odds1 - op.stake1) : acc - op.stake1;
-      }
-      if (op.bookmaker2Id === bookieId) {
-        return op.result === 'win2' ? acc + (op.stake2 * op.odds2 - op.stake2) : acc - op.stake2;
-      }
-      return acc;
-    }, 0);
+    const completedOps = bookieOps.filter(op => op.status === 'completed');
+    
+    // Profit is the sum of operation profits (whole operation)
+    const totalProfit = completedOps.reduce((acc, op) => acc + op.profit, 0);
+    
+    // Total investment in these operations (whole operation)
+    const totalInvestment = completedOps.reduce((acc, op) => acc + (op.stake1 + op.stake2), 0);
+    
+    const roi = totalInvestment > 0 ? (totalProfit / totalInvestment) * 100 : 0;
 
-    return { volume, profit, count: bookieOps.length };
+    return { volume, profit: totalProfit, roi, count: bookieOps.length };
   };
 
   const handleAdd = () => {
@@ -131,11 +132,14 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
                     <div className="flex items-center gap-2">
                       {(() => {
                         const stats = getBookieStats(bookie.id);
-                        const roi = stats.volume > 0 ? (stats.profit / stats.volume) * 100 : 0;
                         return (
                           <>
                             <span className={cn("text-[10px] font-bold", stats.profit >= 0 ? "text-green-400" : "text-red-400")}>
-                              {roi.toFixed(1)}% ROI
+                              R$ {stats.profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                            <span className="text-[10px] text-gray-500">•</span>
+                            <span className={cn("text-[10px] font-bold", stats.roi >= 0 ? "text-purple-400" : "text-red-400")}>
+                              {stats.roi.toFixed(1)}% ROI
                             </span>
                             <span className="text-[10px] text-gray-500">•</span>
                             <span className="text-[10px] text-gray-500 font-bold">{stats.count} bets</span>
@@ -282,19 +286,27 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
                   </CardHeader>
                   
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-2">
                       <div className="space-y-1">
                         <p className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1">
                           <TrendingUp size={10} /> Volume
                         </p>
-                        <p className="text-sm font-bold text-white">R$ {stats.volume.toLocaleString('pt-BR')}</p>
+                        <p className="text-xs font-bold text-white">R$ {stats.volume.toLocaleString('pt-BR')}</p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1">
-                          <DollarSign size={10} /> Lucro/Preju
+                          <DollarSign size={10} /> Lucro
                         </p>
-                        <p className={cn("text-sm font-bold", stats.profit >= 0 ? "text-green-400" : "text-red-400")}>
+                        <p className={cn("text-xs font-bold", stats.profit >= 0 ? "text-green-400" : "text-red-400")}>
                           R$ {stats.profit.toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1">
+                          <TrendingUp size={10} /> ROI
+                        </p>
+                        <p className={cn("text-xs font-bold", stats.roi >= 0 ? "text-purple-400" : "text-red-400")}>
+                          {stats.roi.toFixed(1)}%
                         </p>
                       </div>
                     </div>
