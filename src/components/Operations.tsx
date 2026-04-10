@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Image as ImageIcon, Loader2, Check, X, AlertCircle, TrendingUp, Calendar, ArrowRight, History } from 'lucide-react';
+import { Plus, Image as ImageIcon, Loader2, Check, X, AlertCircle, TrendingUp, Calendar, ArrowRight, History, ChevronUp, ChevronDown } from 'lucide-react';
 import { Bookmaker, Operation } from '@/src/types';
 import { extractOperationFromImage, ExtractedOperation } from '@/src/services/geminiService';
 import { toast } from 'sonner';
@@ -30,7 +30,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
   const [extractedOps, setExtractedOps] = React.useState<(ExtractedOperation & { tempId: string })[]>([]);
   const [selectedOp, setSelectedOp] = React.useState<Operation | null>(null);
   const [showAllMonths, setShowAllMonths] = React.useState(false);
-  const [sortBy, setSortBy] = React.useState<'date' | 'profit'>('date');
+  const [sortConfig, setSortConfig] = React.useState<{ key: 'date' | 'profit', direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
 
   const getDefaultDate = () => new Date().toISOString().slice(0, 16);
 
@@ -73,12 +73,16 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
     }
 
     return [...result].sort((a, b) => {
-      if (sortBy === 'profit') {
-        return b.profitPercentage - a.profitPercentage;
+      if (sortConfig.key === 'profit') {
+        return sortConfig.direction === 'desc' 
+          ? b.profitPercentage - a.profitPercentage 
+          : a.profitPercentage - b.profitPercentage;
       }
-      return b.date - a.date;
+      return sortConfig.direction === 'desc' 
+        ? b.date - a.date 
+        : a.date - b.date;
     });
-  }, [operations, showAllMonths, currentMonth, currentYear, sortBy]);
+  }, [operations, showAllMonths, currentMonth, currentYear, sortConfig]);
 
   const completedOps = filteredOperations.filter(op => op.status === 'completed');
   const totalProfit = completedOps.reduce((acc, op) => acc + op.profit, 0);
@@ -112,6 +116,18 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
     
     return dailyAvgMonth * totalBettingDays;
   }, [completedOps, currentMonth, currentYear]);
+
+  const handleSort = (key: 'date' | 'profit') => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
+
+  const SortIcon = ({ column }: { column: 'date' | 'profit' }) => {
+    if (sortConfig.key !== column) return null;
+    return sortConfig.direction === 'desc' ? <ChevronDown size={14} className="ml-1" /> : <ChevronUp size={14} className="ml-1" />;
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -210,15 +226,6 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
           </p>
         </div>
         <div className="flex gap-3">
-          <Select value={sortBy} onValueChange={(v: 'date' | 'profit') => setSortBy(v)}>
-            <SelectTrigger className="w-[160px] bg-[#0f0f0f] border-white/10 text-gray-400 h-10">
-              <SelectValue placeholder="Ordenar por" />
-            </SelectTrigger>
-            <SelectContent className="bg-[#1a1a1a] border-white/10 text-white">
-              <SelectItem value="date">Data (Mais recente)</SelectItem>
-              <SelectItem value="profit">Maior Lucro (%)</SelectItem>
-            </SelectContent>
-          </Select>
           <Button 
             variant="ghost" 
             className={cn(
@@ -352,11 +359,27 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
           <Table>
             <TableHeader>
               <TableRow className="border-white/10 hover:bg-transparent">
-                <TableHead className="text-gray-400 w-[100px]">Data</TableHead>
+                <TableHead 
+                  className="text-gray-400 w-[120px] cursor-pointer hover:text-white transition-colors"
+                  onClick={() => handleSort('date')}
+                >
+                  <div className="flex items-center">
+                    Data
+                    <SortIcon column="date" />
+                  </div>
+                </TableHead>
                 <TableHead className="text-gray-400">Evento</TableHead>
                 <TableHead className="text-gray-400 text-center w-[220px]">Casas</TableHead>
                 <TableHead className="text-gray-400 w-[120px]">Investimento</TableHead>
-                <TableHead className="text-gray-400 w-[140px]">Lucro</TableHead>
+                <TableHead 
+                  className="text-gray-400 w-[140px] cursor-pointer hover:text-white transition-colors"
+                  onClick={() => handleSort('profit')}
+                >
+                  <div className="flex items-center">
+                    Lucro
+                    <SortIcon column="profit" />
+                  </div>
+                </TableHead>
                 <TableHead className="text-gray-400 w-[100px]">Status</TableHead>
                 <TableHead className="text-gray-400 text-right w-[220px]">Ações</TableHead>
               </TableRow>
