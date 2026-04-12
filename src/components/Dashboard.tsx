@@ -14,7 +14,12 @@ interface DashboardProps {
 
 export default function Dashboard({ bookmakers, operations, transactions }: DashboardProps) {
   const totalBalance = bookmakers.reduce((acc, b) => acc + b.balance, 0);
-  const totalProfit = operations.reduce((acc, op) => acc + (op.status === 'completed' ? op.profit : 0), 0);
+  const totalProfitFromOps = operations.reduce((acc, op) => acc + (op.status === 'completed' ? op.profit : 0), 0);
+  const totalAdjustments = transactions
+    .filter(t => t.type === 'adjustment')
+    .reduce((acc, t) => acc + t.amount, 0);
+  
+  const totalProfit = totalProfitFromOps - totalAdjustments;
   
   const pendingBankroll = operations
     .filter(op => op.status === 'pending')
@@ -59,15 +64,31 @@ export default function Dashboard({ bookmakers, operations, transactions }: Dash
         }
       });
 
+    // Subtract adjustments from daily profit
+    transactions
+      .filter(t => t.type === 'adjustment')
+      .forEach(t => {
+        const tDate = new Date(t.date).toISOString().split('T')[0];
+        const dayIndex = last7Days.findIndex(d => d.dateStr === tDate);
+        if (dayIndex !== -1) {
+          last7Days[dayIndex].profit -= t.amount;
+        }
+      });
+
     // Calculate cumulative profit
     let cumulative = 0;
     // We might want to start from the total profit before these 7 days to show true evolution
-    const profitBefore = operations
+    const profitBeforeOps = operations
       .filter(op => op.status === 'completed')
       .filter(op => new Date(op.date).toISOString().split('T')[0] < last7Days[0].dateStr)
       .reduce((acc, op) => acc + op.profit, 0);
     
-    cumulative = profitBefore;
+    const adjustmentsBefore = transactions
+      .filter(t => t.type === 'adjustment')
+      .filter(t => new Date(t.date).toISOString().split('T')[0] < last7Days[0].dateStr)
+      .reduce((acc, t) => acc + t.amount, 0);
+    
+    cumulative = profitBeforeOps - adjustmentsBefore;
 
     return last7Days.map(day => {
       cumulative += day.profit;
@@ -81,7 +102,7 @@ export default function Dashboard({ bookmakers, operations, transactions }: Dash
   const stats = [
     { title: 'Banca Total', value: `R$ ${totalBalance.toLocaleString('pt-BR')}`, icon: Wallet, color: 'text-blue-400', bg: 'bg-blue-400/10' },
     { title: 'Pendentes', value: `R$ ${pendingBankroll.toLocaleString('pt-BR')}`, icon: Activity, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-    { title: 'Lucro Total', value: `R$ ${totalProfit.toLocaleString('pt-BR')}`, icon: TrendingUp, color: 'text-green-400', bg: 'bg-green-400/10' },
+    { title: 'Lucro Total', value: `R$ ${totalProfit.toLocaleString('pt-BR')}`, icon: TrendingUp, color: totalProfit >= 0 ? 'text-green-400' : 'text-red-400', bg: totalProfit >= 0 ? 'bg-green-400/10' : 'bg-red-400/10' },
     { title: 'Total Depósitos', value: `R$ ${totalDeposits.toLocaleString('pt-BR')}`, icon: ArrowUpRight, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
     { title: 'Total Saques', value: `R$ ${totalWithdrawals.toLocaleString('pt-BR')}`, icon: ArrowDownRight, color: 'text-orange-400', bg: 'bg-orange-400/10' },
   ];

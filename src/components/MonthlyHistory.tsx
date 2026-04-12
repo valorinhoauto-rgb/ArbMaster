@@ -54,8 +54,14 @@ export default function MonthlyHistory({ operations, transactions }: MonthlyHist
           timestamp: new Date(d.getFullYear(), d.getMonth(), 1).getTime() 
         };
       }
-      if (tr.type === 'deposit') months[key].deposits += tr.amount;
-      else months[key].withdrawals += tr.amount;
+      if (tr.type === 'deposit') {
+        months[key].deposits += tr.amount;
+      } else if (tr.type === 'withdrawal') {
+        months[key].withdrawals += tr.amount;
+      } else if (tr.type === 'adjustment') {
+        // Adjustments are treated as manual losses/prejuízos
+        months[key].profit -= tr.amount;
+      }
     });
 
     const sortedMonths = Object.values(months).sort((a, b) => b.timestamp - a.timestamp);
@@ -65,8 +71,12 @@ export default function MonthlyHistory({ operations, transactions }: MonthlyHist
       const beforeThisMonthOps = operations.filter(op => op.status === 'completed' && new Date(op.date).getTime() < m.timestamp);
       const beforeThisMonthTrans = transactions.filter(tr => new Date(tr.date).getTime() < m.timestamp);
       
-      const initialValue = beforeThisMonthTrans.reduce((acc, tr) => acc + (tr.type === 'deposit' ? tr.amount : -tr.amount), 0) +
-                           beforeThisMonthOps.reduce((acc, op) => acc + op.profit, 0);
+      const initialValue = beforeThisMonthTrans.reduce((acc, tr) => {
+        if (tr.type === 'deposit') return acc + tr.amount;
+        if (tr.type === 'withdrawal') return acc - tr.amount;
+        if (tr.type === 'adjustment') return acc - tr.amount;
+        return acc;
+      }, 0) + beforeThisMonthOps.reduce((acc, op) => acc + op.profit, 0);
       
       const finalValue = initialValue + m.deposits - m.withdrawals + m.profit;
 
