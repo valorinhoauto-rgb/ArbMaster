@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn, formatCurrency } from '@/lib/utils';
 import { Operation, Transaction } from '@/src/types';
 
 interface MonthlyHistoryProps {
@@ -114,14 +115,14 @@ export default function MonthlyHistory({ operations, transactions }: MonthlyHist
               {monthlyData.map((data, i) => (
                 <TableRow key={i} className="border-white/5 hover:bg-white/5">
                   <TableCell className="font-bold capitalize">{data.label}</TableCell>
-                  <TableCell className="text-gray-400">R$ {data.initialValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                  <TableCell className="font-bold text-white">R$ {data.finalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                  <TableCell className="text-green-400/80">R$ {data.deposits.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                  <TableCell className="text-red-400/80">R$ {data.withdrawals.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  <TableCell className="text-gray-400">R$ {formatCurrency(data.initialValue)}</TableCell>
+                  <TableCell className="font-bold text-white">R$ {formatCurrency(data.finalValue)}</TableCell>
+                  <TableCell className="text-green-400/80">R$ {formatCurrency(data.deposits)}</TableCell>
+                  <TableCell className="text-red-400/80">R$ {formatCurrency(data.withdrawals)}</TableCell>
                   <TableCell className="text-gray-400">{data.opCount}</TableCell>
                   <TableCell className="text-right">
                     <span className={`font-bold ${data.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      R$ {data.profit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      R$ {formatCurrency(data.profit)}
                     </span>
                   </TableCell>
                 </TableRow>

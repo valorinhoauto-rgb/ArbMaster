@@ -12,7 +12,7 @@ import { Bookmaker, Operation } from '@/src/types';
 import { extractOperationFromImage, ExtractedOperation } from '@/src/services/geminiService';
 import { toast } from 'sonner';
 import { motion } from 'motion/react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface OperationsProps {
   operations: Operation[];
@@ -266,7 +266,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
             <TrendingUp className="text-green-400" size={18} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">R$ {dailyAverage.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="text-2xl font-bold text-white">R$ {formatCurrency(dailyAverage)}</div>
             <p className="text-xs text-gray-500 mt-1">Baseado em dias com operações</p>
           </CardContent>
         </Card>
@@ -278,7 +278,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
             <Calendar className="text-blue-400" size={18} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">R$ {monthlyProjection.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="text-2xl font-bold text-white">R$ {formatCurrency(monthlyProjection)}</div>
             <p className="text-xs text-gray-500 mt-1">Prospecção baseada na média diária</p>
           </CardContent>
         </Card>
@@ -316,7 +316,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <p className="text-xs text-gray-500 uppercase font-bold">Lucro R$</p>
-                        <p className="text-green-400 font-bold text-lg">R$ {op.profit.toFixed(2)}</p>
+                        <p className="text-green-400 font-bold text-lg">R$ {formatCurrency(op.profit)}</p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-xs text-gray-500 uppercase font-bold">ROI %</p>
@@ -331,7 +331,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                       <p className="text-sm">{op.selection1}</p>
                       <div className="flex justify-between text-xs">
                         <span>Odd: <span className="text-white font-bold">{op.odds1}</span></span>
-                        <span>Stake: <span className="text-white font-bold">R$ {op.stake1}</span></span>
+                        <span>Stake: <span className="text-white font-bold">R$ {formatCurrency(op.stake1)}</span></span>
                       </div>
                     </div>
                     <div className="p-3 rounded-lg bg-white/5 space-y-1">
@@ -339,7 +339,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                       <p className="text-sm">{op.selection2}</p>
                       <div className="flex justify-between text-xs">
                         <span>Odd: <span className="text-white font-bold">{op.odds2}</span></span>
-                        <span>Stake: <span className="text-white font-bold">R$ {op.stake2}</span></span>
+                        <span>Stake: <span className="text-white font-bold">R$ {formatCurrency(op.stake2)}</span></span>
                       </div>
                     </div>
                   </div>
@@ -409,10 +409,10 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>R$ {(op.stake1 + op.stake2).toLocaleString('pt-BR')}</TableCell>
+                  <TableCell>R$ {formatCurrency(op.stake1 + op.stake2)}</TableCell>
                   <TableCell>
                     <span className={op.profit >= 0 ? "text-green-400" : "text-red-400"}>
-                      R$ {op.profit.toLocaleString('pt-BR')} ({op.profitPercentage}%)
+                      R$ {formatCurrency(op.profit)} ({op.profitPercentage}%)
                     </span>
                   </TableCell>
                   <TableCell>
@@ -632,7 +632,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
               <div>
                 <p className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Lucro Previsto</p>
                 <p className="text-xl font-black text-green-400">
-                  R$ {manualCalculations.profit.toFixed(2)}
+                  R$ {formatCurrency(manualCalculations.profit)}
                 </p>
               </div>
               <div className="text-right">
@@ -719,10 +719,10 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                   <p className="text-sm">{selectedOp.selection1}</p>
                   <div className="flex justify-between text-sm pt-2 border-t border-white/5">
                     <span className="text-gray-400">Odd: <span className="text-white font-bold">{selectedOp.odds1}</span></span>
-                    <span className="text-gray-400">Stake: <span className="text-white font-bold">R$ {selectedOp.stake1}</span></span>
+                    <span className="text-gray-400">Stake: <span className="text-white font-bold">R$ {formatCurrency(selectedOp.stake1)}</span></span>
                   </div>
                   <div className="text-sm text-right pt-1">
-                    <span className="text-gray-400">Retorno: <span className="text-white font-bold">R$ {(selectedOp.stake1 * selectedOp.odds1).toFixed(2)}</span></span>
+                    <span className="text-gray-400">Retorno: <span className="text-white font-bold">R$ {formatCurrency(selectedOp.stake1 * selectedOp.odds1)}</span></span>
                   </div>
                 </div>
 
@@ -734,10 +734,10 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                   <p className="text-sm">{selectedOp.selection2}</p>
                   <div className="flex justify-between text-sm pt-2 border-t border-white/5">
                     <span className="text-gray-400">Odd: <span className="text-white font-bold">{selectedOp.odds2}</span></span>
-                    <span className="text-gray-400">Stake: <span className="text-white font-bold">R$ {selectedOp.stake2}</span></span>
+                    <span className="text-gray-400">Stake: <span className="text-white font-bold">R$ {formatCurrency(selectedOp.stake2)}</span></span>
                   </div>
                   <div className="text-sm text-right pt-1">
-                    <span className="text-gray-400">Retorno: <span className="text-white font-bold">R$ {(selectedOp.stake2 * selectedOp.odds2).toFixed(2)}</span></span>
+                    <span className="text-gray-400">Retorno: <span className="text-white font-bold">R$ {formatCurrency(selectedOp.stake2 * selectedOp.odds2)}</span></span>
                   </div>
                 </div>
               </div>
@@ -745,7 +745,7 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
               <div className="p-4 rounded-xl bg-purple-600/10 border border-purple-500/20 flex justify-between items-center">
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-bold">Lucro Previsto</p>
-                  <p className="text-2xl font-bold text-green-400">R$ {selectedOp.profit.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-green-400">R$ {formatCurrency(selectedOp.profit)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-gray-500 uppercase font-bold">ROI</p>

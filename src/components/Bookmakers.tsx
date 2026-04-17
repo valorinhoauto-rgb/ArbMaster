@@ -8,7 +8,7 @@ import { Plus, Trash2, RotateCcw, Edit2, Landmark, History, TrendingUp, DollarSi
 import { Bookmaker, Operation } from '@/src/types';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'motion/react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface BookmakersProps {
   bookmakers: Bookmaker[];
@@ -135,7 +135,7 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
                         return (
                           <>
                             <span className={cn("text-[10px] font-bold", stats.profit >= 0 ? "text-green-400" : "text-red-400")}>
-                              R$ {stats.profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              R$ {formatCurrency(stats.profit)}
                             </span>
                             <span className="text-[10px] text-gray-500">•</span>
                             <span className={cn("text-[10px] font-bold", stats.roi >= 0 ? "text-purple-400" : "text-red-400")}>
@@ -174,7 +174,7 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-1">
                     <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Banca Atual</span>
-                    <div className="text-2xl font-bold text-white">R$ {bookie.balance.toLocaleString('pt-BR')}</div>
+                    <div className="text-2xl font-bold text-white">R$ {formatCurrency(bookie.balance)}</div>
                   </div>
                   
                   <div className="flex gap-2">
@@ -291,14 +291,14 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
                         <p className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1">
                           <TrendingUp size={10} /> Volume
                         </p>
-                        <p className="text-xs font-bold text-white">R$ {stats.volume.toLocaleString('pt-BR')}</p>
+                        <p className="text-xs font-bold text-white">R$ {formatCurrency(stats.volume)}</p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1">
                           <DollarSign size={10} /> Lucro
                         </p>
                         <p className={cn("text-xs font-bold", stats.profit >= 0 ? "text-green-400" : "text-red-400")}>
-                          R$ {stats.profit.toLocaleString('pt-BR')}
+                          R$ {formatCurrency(stats.profit)}
                         </p>
                       </div>
                       <div className="space-y-1">

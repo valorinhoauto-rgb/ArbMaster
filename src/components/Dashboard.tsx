@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'motion/react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { Bookmaker, Operation, Transaction } from '@/src/types';
 
 interface DashboardProps {
@@ -100,11 +100,11 @@ export default function Dashboard({ bookmakers, operations, transactions }: Dash
   }, [operations]);
 
   const stats = [
-    { title: 'Banca Total', value: `R$ ${totalBalance.toLocaleString('pt-BR')}`, icon: Wallet, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-    { title: 'Pendentes', value: `R$ ${pendingBankroll.toLocaleString('pt-BR')}`, icon: Activity, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-    { title: 'Lucro Total', value: `R$ ${totalProfit.toLocaleString('pt-BR')}`, icon: TrendingUp, color: totalProfit >= 0 ? 'text-green-400' : 'text-red-400', bg: totalProfit >= 0 ? 'bg-green-400/10' : 'bg-red-400/10' },
-    { title: 'Total Depósitos', value: `R$ ${totalDeposits.toLocaleString('pt-BR')}`, icon: ArrowUpRight, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
-    { title: 'Total Saques', value: `R$ ${totalWithdrawals.toLocaleString('pt-BR')}`, icon: ArrowDownRight, color: 'text-orange-400', bg: 'bg-orange-400/10' },
+    { title: 'Banca Total', value: `R$ ${formatCurrency(totalBalance)}`, icon: Wallet, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+    { title: 'Pendentes', value: `R$ ${formatCurrency(pendingBankroll)}`, icon: Activity, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+    { title: 'Lucro Total', value: `R$ ${formatCurrency(totalProfit)}`, icon: TrendingUp, color: totalProfit >= 0 ? 'text-green-400' : 'text-red-400', bg: totalProfit >= 0 ? 'bg-green-400/10' : 'bg-red-400/10' },
+    { title: 'Total Depósitos', value: `R$ ${formatCurrency(totalDeposits)}`, icon: ArrowUpRight, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
+    { title: 'Total Saques', value: `R$ ${formatCurrency(totalWithdrawals)}`, icon: ArrowDownRight, color: 'text-orange-400', bg: 'bg-orange-400/10' },
   ];
 
   return (
@@ -198,7 +198,7 @@ export default function Dashboard({ bookmakers, operations, transactions }: Dash
                     </div>
                     <span className="text-sm font-medium">{bookie.name}</span>
                   </div>
-                  <span className="text-sm font-bold">R$ {bookie.balance.toLocaleString('pt-BR')}</span>
+                  <span className="text-sm font-bold">R$ {formatCurrency(bookie.balance)}</span>
                 </div>
               ))}
               {bookmakers.length === 0 && (
