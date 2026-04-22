@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Image as ImageIcon, Loader2, Check, X, AlertCircle, TrendingUp, Calendar, ArrowRight, History, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Image as ImageIcon, Loader2, Check, X, AlertCircle, TrendingUp, Calendar, ArrowRight, History, ChevronUp, ChevronDown, Edit2 } from 'lucide-react';
 import { Bookmaker, Operation } from '@/src/types';
 import { extractOperationFromImage, ExtractedOperation } from '@/src/services/geminiService';
 import { toast } from 'sonner';
@@ -26,9 +26,11 @@ interface OperationsProps {
 
 export default function Operations({ operations, bookmakers, onAdd, onUpdate, onSettle, onDelete, geminiKey }: OperationsProps) {
   const [isAddOpen, setIsAddOpen] = React.useState(false);
+  const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
   const [extractedOps, setExtractedOps] = React.useState<(ExtractedOperation & { tempId: string })[]>([]);
   const [selectedOp, setSelectedOp] = React.useState<Operation | null>(null);
+  const [editingOp, setEditingOp] = React.useState<Operation | null>(null);
   const [showAllMonths, setShowAllMonths] = React.useState(false);
   const [sortConfig, setSortConfig] = React.useState<{ key: 'date' | 'profit', direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
 
@@ -46,7 +48,24 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
     odds1: '',
     odds2: '',
     stake1: '',
-    stake2: ''
+    stake2: '',
+    profitOverride: ''
+  });
+
+  const [editOpData, setEditOpData] = React.useState({
+    event: '',
+    market: '',
+    date: getDefaultDate(),
+    bookmaker1Id: '',
+    bookmaker2Id: '',
+    selection1: '',
+    selection2: '',
+    odds1: '',
+    odds2: '',
+    stake1: '',
+    stake2: '',
+    profitOverride: '',
+    status: 'pending' as 'pending' | 'completed' | 'void'
   });
 
   const manualCalculations = React.useMemo(() => {
@@ -54,10 +73,34 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
     const s2 = parseFloat(manualOp.stake2) || 0;
     const o1 = parseFloat(manualOp.odds1) || 0;
     const total = s1 + s2;
-    const profit = total > 0 ? (s1 * o1) - total : 0;
+    
+    let profit = total > 0 ? (s1 * o1) - total : 0;
+    
+    // If there's an override, use it
+    if (manualOp.profitOverride) {
+      profit = parseFloat(manualOp.profitOverride);
+    }
+    
     const roi = total > 0 ? (profit / total) * 100 : 0;
     return { profit, roi, total };
-  }, [manualOp.stake1, manualOp.stake2, manualOp.odds1]);
+  }, [manualOp.stake1, manualOp.stake2, manualOp.odds1, manualOp.profitOverride]);
+
+  const editCalculations = React.useMemo(() => {
+    const s1 = parseFloat(editOpData.stake1) || 0;
+    const s2 = parseFloat(editOpData.stake2) || 0;
+    const o1 = parseFloat(editOpData.odds1) || 0;
+    const total = s1 + s2;
+    
+    let profit = total > 0 ? (s1 * o1) - total : 0;
+    
+    // If there's an override, use it
+    if (editOpData.profitOverride) {
+      profit = parseFloat(editOpData.profitOverride);
+    }
+    
+    const roi = total > 0 ? (profit / total) * 100 : 0;
+    return { profit, roi, total };
+  }, [editOpData.stake1, editOpData.stake2, editOpData.odds1, editOpData.profitOverride]);
 
   const now = new Date();
   const currentMonth = now.getMonth();
@@ -465,6 +508,33 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                       <Button 
                         variant="ghost" 
                         size="sm" 
+                        className="h-7 w-7 p-0 text-gray-400 hover:text-purple-400 hover:bg-purple-400/10"
+                        onClick={() => {
+                          setEditingOp(op);
+                          setEditOpData({
+                            event: op.event,
+                            market: op.market,
+                            date: new Date(op.date).toISOString().slice(0, 16),
+                            bookmaker1Id: op.bookmaker1Id,
+                            bookmaker2Id: op.bookmaker2Id,
+                            selection1: op.selection1,
+                            selection2: op.selection2,
+                            odds1: op.odds1.toString(),
+                            odds2: op.odds2.toString(),
+                            stake1: op.stake1.toString(),
+                            stake2: op.stake2.toString(),
+                            profitOverride: op.status === 'completed' ? op.profit.toString() : '',
+                            status: op.status
+                          });
+                          setIsEditOpen(true);
+                        }}
+                        title="Editar"
+                      >
+                        <Edit2 size={14} />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
                         className="h-7 w-7 p-0 text-red-400/50 hover:text-red-400 hover:bg-red-400/10"
                         onClick={() => onDelete(op.id)}
                         title="Excluir"
@@ -677,12 +747,228 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                 setManualOp({
                   event: '', market: '', date: getDefaultDate(),
                   bookmaker1Id: '', bookmaker2Id: '',
-                  selection1: '', selection2: '', odds1: '', odds2: '', stake1: '', stake2: ''
+                  selection1: '', selection2: '', odds1: '', odds2: '', stake1: '', stake2: '',
+                  profitOverride: ''
                 });
                 toast.success("Operação manual registrada!");
               }}
             >
               REGISTRAR OPERAÇÃO
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="bg-[#0f0f0f] border-white/10 text-white !max-w-[800px] !w-[95vw] max-h-[98vh] overflow-y-auto p-0 gap-0 shadow-2xl shadow-purple-500/20">
+          <DialogHeader className="p-4 border-b border-white/10 bg-white/[0.02]">
+            <DialogTitle className="text-lg font-bold tracking-tight uppercase">Editar Operação</DialogTitle>
+          </DialogHeader>
+          
+          <div className="p-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-gray-500 text-[9px] uppercase tracking-wider font-bold">Evento / Jogo</Label>
+                <Input 
+                  placeholder="Ex: Flamengo vs Palmeiras" 
+                  className="bg-white/5 border-white/10 h-9 text-xs focus:ring-purple-500/50 transition-all rounded-lg"
+                  value={editOpData.event}
+                  onChange={(e) => setEditOpData({...editOpData, event: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-gray-500 text-[9px] uppercase tracking-wider font-bold">Mercado / Campeonato</Label>
+                <Input 
+                  placeholder="Ex: Brasileirão - AH 0.0" 
+                  className="bg-white/5 border-white/10 h-9 text-xs focus:ring-purple-500/50 transition-all rounded-lg"
+                  value={editOpData.market}
+                  onChange={(e) => setEditOpData({...editOpData, market: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-gray-500 text-[9px] uppercase tracking-wider font-bold">Data e Hora</Label>
+                <Input 
+                  type="datetime-local"
+                  className="bg-white/5 border-white/10 h-9 text-xs text-white scheme-dark focus:ring-purple-500/50 transition-all rounded-lg"
+                  value={editOpData.date}
+                  onChange={(e) => setEditOpData({...editOpData, date: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-3 p-4 rounded-xl bg-white/[0.02] border border-white/10 hover:border-purple-500/30 transition-all relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-0.5 bg-purple-600" />
+                <h3 className="font-bold text-[11px] uppercase text-purple-500">Entrada 01</h3>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-gray-500 text-[9px] font-bold uppercase">Casa de Aposta</Label>
+                    <Select value={editOpData.bookmaker1Id} onValueChange={(v) => setEditOpData({...editOpData, bookmaker1Id: v})}>
+                      <SelectTrigger className="bg-white/5 border-white/10 h-8 text-xs rounded-lg">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-white/10 text-white">
+                        {bookmakers.map(b => (
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-gray-500 text-[9px] font-bold uppercase">Seleção</Label>
+                    <Input 
+                      placeholder="Ex: Flamengo" 
+                      className="bg-white/5 border-white/10 h-8 text-xs rounded-lg"
+                      value={editOpData.selection1}
+                      onChange={(e) => setEditOpData({...editOpData, selection1: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-gray-500 text-[9px] font-bold uppercase">Odd</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        className="bg-white/5 border-white/10 h-8 text-xs font-bold rounded-lg"
+                        value={editOpData.odds1}
+                        onChange={(e) => setEditOpData({...editOpData, odds1: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-gray-500 text-[9px] font-bold uppercase">Stake (R$)</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        className="bg-white/5 border-white/10 h-8 text-xs font-bold text-green-400 rounded-lg"
+                        value={editOpData.stake1}
+                        onChange={(e) => setEditOpData({...editOpData, stake1: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 p-4 rounded-xl bg-white/[0.02] border border-white/10 hover:border-blue-500/30 transition-all relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-0.5 bg-blue-600" />
+                <h3 className="font-bold text-[11px] uppercase text-blue-500">Entrada 02</h3>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-gray-500 text-[9px] font-bold uppercase">Casa de Aposta</Label>
+                    <Select value={editOpData.bookmaker2Id} onValueChange={(v) => setEditOpData({...editOpData, bookmaker2Id: v})}>
+                      <SelectTrigger className="bg-white/5 border-white/10 h-8 text-xs rounded-lg">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-white/10 text-white">
+                        {bookmakers.map(b => (
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-gray-500 text-[9px] font-bold uppercase">Seleção</Label>
+                    <Input 
+                      placeholder="Ex: Palmeiras" 
+                      className="bg-white/5 border-white/10 h-8 text-xs rounded-lg"
+                      value={editOpData.selection2}
+                      onChange={(e) => setEditOpData({...editOpData, selection2: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-gray-500 text-[9px] font-bold uppercase">Odd</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        className="bg-white/5 border-white/10 h-8 text-xs font-bold rounded-lg"
+                        value={editOpData.odds2}
+                        onChange={(e) => setEditOpData({...editOpData, odds2: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-gray-500 text-[9px] font-bold uppercase">Stake (R$)</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        className="bg-white/5 border-white/10 h-8 text-xs font-bold text-green-400 rounded-lg"
+                        value={editOpData.stake2}
+                        onChange={(e) => setEditOpData({...editOpData, stake2: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-gray-500 text-[9px] uppercase tracking-wider font-bold">Lucro Final Ajustado (Opcional)</Label>
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={12} className="text-gray-500" />
+                  <span className="text-[10px] text-gray-500">Deixe vazio para cálculo automático</span>
+                </div>
+              </div>
+              <Input 
+                type="number" 
+                step="0.01" 
+                placeholder={`Automático: R$ ${formatCurrency(editCalculations.profit)}`}
+                className="bg-white/5 border-white/10 h-9 text-xs font-bold text-blue-400 focus:ring-blue-500/50 transition-all rounded-lg"
+                value={editOpData.profitOverride}
+                onChange={(e) => setEditOpData({...editOpData, profitOverride: e.target.value})}
+              />
+            </div>
+
+            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-600/10 to-blue-600/10 border border-white/10 flex justify-between items-center">
+              <div>
+                <p className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Lucro Atualizado</p>
+                <p className="text-xl font-black text-green-400">
+                  R$ {formatCurrency(editCalculations.profit)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">ROI Atualizado</p>
+                <p className="text-xl font-black text-purple-400">
+                  {editCalculations.roi.toFixed(2)}%
+                </p>
+              </div>
+            </div>
+
+            <Button 
+              className="w-full h-11 text-xs font-bold bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20 transition-all active:scale-[0.98] rounded-lg uppercase tracking-widest"
+              onClick={() => {
+                if (!editingOp) return;
+                const s1 = parseFloat(editOpData.stake1);
+                const s2 = parseFloat(editOpData.stake2);
+                const o1 = parseFloat(editOpData.odds1);
+                const o2 = parseFloat(editOpData.odds2);
+                
+                if (!editOpData.event || !editOpData.bookmaker1Id || !editOpData.bookmaker2Id || isNaN(s1) || isNaN(s2) || isNaN(o1) || isNaN(o2)) {
+                  toast.error("Preencha todos os campos obrigatórios corretamente.");
+                  return;
+                }
+
+                onUpdate(editingOp.id, {
+                  date: new Date(editOpData.date).getTime(),
+                  event: editOpData.event,
+                  market: editOpData.market,
+                  bookmaker1Id: editOpData.bookmaker1Id,
+                  bookmaker2Id: editOpData.bookmaker2Id,
+                  selection1: editOpData.selection1,
+                  selection2: editOpData.selection2,
+                  odds1: o1,
+                  odds2: o2,
+                  stake1: s1,
+                  stake2: s2,
+                  profit: editCalculations.profit,
+                  profitPercentage: parseFloat(editCalculations.roi.toFixed(2))
+                });
+
+                setIsEditOpen(false);
+                setEditingOp(null);
+                toast.success("Operação atualizada com sucesso!");
+              }}
+            >
+              SALVAR ALTERAÇÕES
             </Button>
           </div>
         </DialogContent>

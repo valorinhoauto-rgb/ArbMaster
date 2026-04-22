@@ -260,6 +260,24 @@ export default function App() {
 
   const updateOperation = async (id: string, updates: Partial<Operation>) => {
     try {
+      const op = operations.find(o => o.id === id);
+      if (!op) return;
+
+      // If it's a pending operation and stakes changed, adjust bookmaker balances
+      if (op.status === 'pending') {
+        const b1 = bookmakers.find(b => b.id === (updates.bookmaker1Id || op.bookmaker1Id));
+        const b2 = bookmakers.find(b => b.id === (updates.bookmaker2Id || op.bookmaker2Id));
+
+        if (updates.stake1 !== undefined && updates.stake1 !== op.stake1 && b1) {
+          const diff = updates.stake1 - op.stake1;
+          await updateDoc(doc(db, 'bookmakers', b1.id), { balance: b1.balance - diff });
+        }
+        if (updates.stake2 !== undefined && updates.stake2 !== op.stake2 && b2) {
+          const diff = updates.stake2 - op.stake2;
+          await updateDoc(doc(db, 'bookmakers', b2.id), { balance: b2.balance - diff });
+        }
+      }
+
       await updateDoc(doc(db, 'operations', id), updates);
       toast.success("Operação atualizada!");
     } catch (error) {
