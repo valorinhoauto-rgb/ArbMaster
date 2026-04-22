@@ -63,6 +63,10 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == resource.data.userId;
     }
 
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
     function uidUnchanged() {
       return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
     }
@@ -89,14 +93,15 @@ service cloud.firestore {
              data.balance is number &&
              data.isLimited is bool &&
              data.createdAt is number &&
+             (!('limitedAt' in data) || data.limitedAt == null || data.limitedAt is number) &&
              data.userId is string;
     }
 
     function isValidOperation(data) {
       return hasRequiredFields(['date', 'bookmaker1Id', 'bookmaker2Id', 'event', 'market', 'selection1', 'selection2', 'odds1', 'odds2', 'stake1', 'stake2', 'profit', 'profitPercentage', 'status', 'userId']) &&
              data.date is number &&
-             data.bookmaker1Id is string &&
-             data.bookmaker2Id is string &&
+             isValidId(data.bookmaker1Id) &&
+             isValidId(data.bookmaker2Id) &&
              data.event is string && data.event.size() < 200 &&
              data.market is string && data.market.size() < 100 &&
              data.selection1 is string &&
@@ -108,7 +113,7 @@ service cloud.firestore {
              data.profit is number &&
              data.profitPercentage is number &&
              data.status in ['pending', 'completed', 'void'] &&
-             (!('result' in data) || data.result in ['win1', 'win2', 'void']) &&
+             (!('result' in data) || data.result == null || data.result in ['win1', 'win2', 'void']) &&
              data.userId is string;
     }
 
@@ -116,7 +121,7 @@ service cloud.firestore {
       return hasRequiredFields(['type', 'amount', 'bookmakerId', 'date', 'userId']) &&
              data.type in ['deposit', 'withdrawal', 'transfer', 'adjustment'] &&
              data.amount is number &&
-             data.bookmakerId is string &&
+             isValidId(data.bookmakerId) &&
              data.date is number &&
              data.userId is string;
     }
@@ -128,7 +133,7 @@ service cloud.firestore {
              data.currentAmount is number &&
              data.createdAt is number &&
              data.status in ['active', 'completed'] &&
-             (!('completedAt' in data) || data.completedAt is number) &&
+             (!('completedAt' in data) || data.completedAt == null || data.completedAt is number) &&
              data.userId is string;
     }
 
@@ -143,35 +148,35 @@ service cloud.firestore {
 
     match /bookmakers/{bookmakerId} {
       allow read: if isDocOwner();
-      allow create: if isAuthenticated() && isValidBookmaker(request.resource.data) && isOwner(request.resource.data.userId);
-      allow update: if isDocOwner() && isValidBookmaker(request.resource.data) && uidNotModified();
-      allow delete: if isDocOwner();
+      allow create: if isAuthenticated() && isValidId(bookmakerId) && isValidBookmaker(request.resource.data) && isOwner(request.resource.data.userId);
+      allow update: if isDocOwner() && isValidId(bookmakerId) && isValidBookmaker(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner() && isValidId(bookmakerId);
     }
 
     match /operations/{operationId} {
       allow read: if isDocOwner();
-      allow create: if isAuthenticated() && isValidOperation(request.resource.data) && isOwner(request.resource.data.userId);
-      allow update: if isDocOwner() && isValidOperation(request.resource.data) && uidNotModified();
-      allow delete: if isDocOwner();
+      allow create: if isAuthenticated() && isValidId(operationId) && isValidOperation(request.resource.data) && isOwner(request.resource.data.userId);
+      allow update: if isDocOwner() && isValidId(operationId) && isValidOperation(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner() && isValidId(operationId);
     }
 
     match /transactions/{transactionId} {
       allow read: if isDocOwner();
-      allow create: if isAuthenticated() && isValidTransaction(request.resource.data) && isOwner(request.resource.data.userId);
-      allow update: if isDocOwner() && isValidTransaction(request.resource.data) && uidNotModified();
-      allow delete: if isDocOwner();
+      allow create: if isAuthenticated() && isValidId(transactionId) && isValidTransaction(request.resource.data) && isOwner(request.resource.data.userId);
+      allow update: if isDocOwner() && isValidId(transactionId) && isValidTransaction(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner() && isValidId(transactionId);
     }
 
     match /goals/{goalId} {
       allow read: if isDocOwner();
-      allow create: if isAuthenticated() && isValidGoal(request.resource.data) && isOwner(request.resource.data.userId);
-      allow update: if isDocOwner() && isValidGoal(request.resource.data) && uidNotModified();
-      allow delete: if isDocOwner();
+      allow create: if isAuthenticated() && isValidId(goalId) && isValidGoal(request.resource.data) && isOwner(request.resource.data.userId);
+      allow update: if isDocOwner() && isValidId(goalId) && isValidGoal(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner() && isValidId(goalId);
     }
 
     match /settings/{userId} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId) && isValidSettings(request.resource.data);
+      allow read: if isOwner(userId) && isValidId(userId);
+      allow write: if isOwner(userId) && isValidId(userId) && isValidSettings(request.resource.data);
     }
 
     // Default deny
