@@ -43,29 +43,30 @@ export default function App() {
   React.useEffect(() => {
     if (!user) return;
 
+    const uid = user.uid;
     setIsLoading(true);
 
-    const qBookies = query(collection(db, 'bookmakers'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const qBookies = query(collection(db, 'bookmakers'), where('userId', '==', uid), orderBy('createdAt', 'desc'));
     const unsubBookies = onSnapshot(qBookies, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bookmaker));
       setBookmakers(data);
     }, (error) => {
       console.error("Error fetching bookmakers:", error);
-      toast.error("Erro ao carregar casas de aposta.");
+      toast.error("Erro ao carregar casas de aposta.", { id: 'bk-error' });
     });
 
-    const qOps = query(collection(db, 'operations'), where('userId', '==', user.uid), orderBy('date', 'desc'));
+    const qOps = query(collection(db, 'operations'), where('userId', '==', uid), orderBy('date', 'desc'));
     const unsubOps = onSnapshot(qOps, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Operation));
       setOperations(data);
       setIsLoading(false);
     }, (error) => {
       console.error("Error fetching operations:", error);
-      toast.error("Erro ao carregar operações.");
+      toast.error("Erro ao carregar operações.", { id: 'op-error' });
       setIsLoading(false);
     });
 
-    const qTrans = query(collection(db, 'transactions'), where('userId', '==', user.uid), orderBy('date', 'desc'));
+    const qTrans = query(collection(db, 'transactions'), where('userId', '==', uid), orderBy('date', 'desc'));
     const unsubTrans = onSnapshot(qTrans, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
       setTransactions(data);
@@ -73,7 +74,7 @@ export default function App() {
       console.error("Error fetching transactions:", error);
     });
 
-    const unsubSettings = onSnapshot(doc(db, 'settings', user.uid), (snapshot) => {
+    const unsubSettings = onSnapshot(doc(db, 'settings', uid), (snapshot) => {
       if (snapshot.exists()) {
         setGeminiKey(snapshot.data().geminiKey || '');
       }
@@ -82,7 +83,7 @@ export default function App() {
     });
 
     const unsubGoals = onSnapshot(
-      query(collection(db, 'goals'), where('userId', '==', user.uid), orderBy('createdAt', 'desc')),
+      query(collection(db, 'goals'), where('userId', '==', uid), orderBy('createdAt', 'desc')),
       (snapshot) => {
         const goalsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Goal));
         setGoals(goalsData);
@@ -99,7 +100,7 @@ export default function App() {
       unsubSettings();
       unsubGoals();
     };
-  }, [user]);
+  }, [user?.uid]);
 
   const handleLogin = async () => {
     try {
