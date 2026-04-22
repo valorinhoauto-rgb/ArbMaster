@@ -7,12 +7,13 @@ import React from 'react';
 import { Toaster, toast } from 'sonner';
 import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc } from './firebase';
 import type { User } from './firebase';
-import { Bookmaker, Operation, Transaction } from './types';
+import { Bookmaker, Operation, Transaction, Goal } from './types';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Bookmakers from './components/Bookmakers';
 import Operations from './components/Operations';
 import MonthlyHistory from './components/MonthlyHistory';
+import Metas from './components/Goals';
 import Settings from './components/Settings';
 import Login from './components/Login';
 import { writeBatch } from './firebase';
@@ -26,6 +27,7 @@ export default function App() {
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [geminiKey, setGeminiKey] = React.useState<string>('');
+  const [goals, setGoals] = React.useState<Goal[]>([]);
 
   // Auth Listener
   React.useEffect(() => {
@@ -79,11 +81,23 @@ export default function App() {
       console.error("Error fetching settings:", error);
     });
 
+    const unsubGoals = onSnapshot(
+      query(collection(db, 'goals'), where('userId', '==', user.uid), orderBy('createdAt', 'desc')),
+      (snapshot) => {
+        const goalsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Goal));
+        setGoals(goalsData);
+      },
+      (error) => {
+        console.error("Error fetching goals:", error);
+      }
+    );
+
     return () => {
       unsubBookies();
       unsubOps();
       unsubTrans();
       unsubSettings();
+      unsubGoals();
     };
   }, [user]);
 
@@ -103,6 +117,34 @@ export default function App() {
       toast.success("Sessão encerrada.");
     } catch (error) {
       console.error("Logout error:", error);
+    }
+  };
+
+  const handleAddGoal = async (name: string, targetAmount: number) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'goals'), {
+        name,
+        targetAmount,
+        currentAmount: 0,
+        createdAt: Date.now(),
+        status: 'active',
+        userId: user.uid
+      });
+      toast.success("Meta criada! Foco no objetivo. 🎯");
+    } catch (error) {
+      console.error("Error adding goal:", error);
+      toast.error("Erro ao criar meta.");
+    }
+  };
+
+  const handleDeleteGoal = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'goals', id));
+      toast.success("Meta removida.");
+    } catch (error) {
+      console.error("Error deleting goal:", error);
+      toast.error("Erro ao remover meta.");
     }
   };
 
@@ -186,6 +228,45 @@ export default function App() {
     }
   };
 
+  const handleTransfer = async (fromId: string, toId: string, amount: number) => {
+    if (!user) return;
+    try {
+      const fromBookie = bookmakers.find(b => b.id === fromId);
+      const toBookie = bookmakers.find(b => b.id === toId);
+      if (!fromBookie || !toBookie) return;
+
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'bookmakers', fromId), { balance: fromBookie.balance - amount });
+      batch.update(doc(db, 'bookmakers', toId), { balance: toBookie.balance + amount });
+
+      // Create transaction records marked as 'transfer'
+      // One for source (withdrawal-like) and one for target (deposit-like)
+      const transFrom = doc(collection(db, 'transactions'));
+      batch.set(transFrom, {
+        type: 'transfer',
+        amount: -amount,
+        bookmakerId: fromId,
+        date: Date.now(),
+        userId: user.uid
+      });
+
+      const transTo = doc(collection(db, 'transactions'));
+      batch.set(transTo, {
+        type: 'transfer',
+        amount: amount,
+        bookmakerId: toId,
+        date: Date.now(),
+        userId: user.uid
+      });
+
+      await batch.commit();
+      toast.success("Transferência realizada com sucesso!");
+    } catch (error) {
+      console.error("Error processing transfer:", error);
+      toast.error("Erro ao processar transferência.");
+    }
+  };
+
   // Operation Actions
   const addOperation = async (op: Omit<Operation, 'id' | 'userId'>) => {
     if (!user) return;
@@ -209,28 +290,50 @@ export default function App() {
   };
 
   const settleOperation = async (id: string, result: 'win1' | 'win2' | 'void') => {
+    if (!user) return;
     try {
       const op = operations.find(o => o.id === id);
       if (!op) return;
 
+      const batch = writeBatch(db);
       const b1 = bookmakers.find(b => b.id === op.bookmaker1Id);
       const b2 = bookmakers.find(b => b.id === op.bookmaker2Id);
 
+      // 1. Update balances
       if (result === 'win1' && b1) {
-        await updateDoc(doc(db, 'bookmakers', b1.id), { balance: b1.balance + (op.stake1 * op.odds1) });
+        batch.update(doc(db, 'bookmakers', b1.id), { balance: b1.balance + (op.stake1 * op.odds1) });
       } else if (result === 'win2' && b2) {
-        await updateDoc(doc(db, 'bookmakers', b2.id), { balance: b2.balance + (op.stake2 * op.odds2) });
+        batch.update(doc(db, 'bookmakers', b2.id), { balance: b2.balance + (op.stake2 * op.odds2) });
       } else if (result === 'void') {
-        if (b1) await updateDoc(doc(db, 'bookmakers', b1.id), { balance: b1.balance + op.stake1 });
-        if (b2) await updateDoc(doc(db, 'bookmakers', b2.id), { balance: b2.balance + op.stake2 });
+        if (b1) batch.update(doc(db, 'bookmakers', b1.id), { balance: b1.balance + op.stake1 });
+        if (b2) batch.update(doc(db, 'bookmakers', b2.id), { balance: b2.balance + op.stake2 });
       }
 
-      await updateDoc(doc(db, 'operations', id), { 
+      // 2. Distribute profit to active goals (Requirement 4)
+      if (result !== 'void' && op.profit > 0) {
+        const activeGoals = goals.filter(g => g.status === 'active');
+        if (activeGoals.length > 0) {
+          const share = op.profit / activeGoals.length;
+          activeGoals.forEach(goal => {
+            const newAmount = goal.currentAmount + share;
+            const isCompleted = newAmount >= goal.targetAmount;
+            batch.update(doc(db, 'goals', goal.id), {
+              currentAmount: Number(newAmount.toFixed(2)),
+              status: isCompleted ? 'completed' : 'active',
+              completedAt: isCompleted ? Date.now() : null
+            });
+          });
+        }
+      }
+
+      // 3. Mark operation as completed
+      batch.update(doc(db, 'operations', id), { 
         status: result === 'void' ? 'void' : 'completed',
         result 
       });
 
-      toast.success("Operação finalizada e banca atualizada!");
+      await batch.commit();
+      toast.success("Operação finalizada e lucro distribuído entre metas!");
     } catch (error) {
       console.error("Error settling operation:", error);
       toast.error("Erro ao finalizar operação.");
@@ -351,7 +454,14 @@ export default function App() {
         userEmail={user.email} 
         onLogout={handleLogout}
       >
-        {activeTab === 'dashboard' && <Dashboard bookmakers={bookmakers} operations={operations} transactions={transactions} />}
+        {activeTab === 'dashboard' && (
+          <Dashboard 
+            bookmakers={bookmakers} 
+            operations={operations} 
+            transactions={transactions} 
+            goals={goals}
+          />
+        )}
         {activeTab === 'bookmakers' && (
           <Bookmakers 
             bookmakers={bookmakers} 
@@ -360,6 +470,7 @@ export default function App() {
             onUpdate={updateBookmaker} 
             onDelete={deleteBookmaker} 
             onTransaction={handleTransaction}
+            onTransfer={handleTransfer}
           />
         )}
         {activeTab === 'operations' && (
@@ -377,6 +488,13 @@ export default function App() {
           <MonthlyHistory 
             operations={operations}
             transactions={transactions}
+          />
+        )}
+        {activeTab === 'metas' && (
+          <Metas 
+            goals={goals} 
+            onAddGoal={handleAddGoal} 
+            onDeleteGoal={handleDeleteGoal} 
           />
         )}
         {activeTab === 'settings' && (

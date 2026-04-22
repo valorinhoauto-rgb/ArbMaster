@@ -36,6 +36,17 @@ export interface Transaction {
   userId: string;
 }
 
+export interface Goal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  createdAt: number;
+  completedAt?: number;
+  status: 'active' | 'completed';
+  userId: string;
+}
+
 export interface UserSettings {
   totalBankroll: number;
   currency: string;

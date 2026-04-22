@@ -1,18 +1,20 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
+import { TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Activity, Target, Timer, History } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'motion/react';
 import { cn, formatCurrency } from '@/lib/utils';
-import { Bookmaker, Operation, Transaction } from '@/src/types';
+import { Bookmaker, Operation, Transaction, Goal } from '@/src/types';
+import { Badge } from '@/components/ui/badge';
 
 interface DashboardProps {
   bookmakers: Bookmaker[];
   operations: Operation[];
   transactions: Transaction[];
+  goals: Goal[];
 }
 
-export default function Dashboard({ bookmakers, operations, transactions }: DashboardProps) {
+export default function Dashboard({ bookmakers, operations, transactions, goals }: DashboardProps) {
   const totalBalance = bookmakers.reduce((acc, b) => acc + b.balance, 0);
   const totalProfitFromOps = operations.reduce((acc, op) => acc + (op.status === 'completed' ? op.profit : 0), 0);
   const totalAdjustments = transactions
@@ -32,6 +34,21 @@ export default function Dashboard({ bookmakers, operations, transactions }: Dash
   const totalWithdrawals = transactions
     .filter(t => t.type === 'withdrawal')
     .reduce((acc, t) => acc + t.amount, 0);
+
+  // Calculate daily average profit for time projection
+  const completedOps = operations.filter(op => op.status === 'completed');
+  const dailyAverage = React.useMemo(() => {
+    if (completedOps.length === 0) return 0;
+    const uniqueDays = new Set(completedOps.map(op => new Date(op.date).toDateString())).size;
+    return uniqueDays > 0 ? totalProfit / uniqueDays : 0;
+  }, [completedOps, totalProfit]);
+
+  const activeGoals = goals.filter(g => g.status === 'active');
+  const primaryGoal = activeGoals.length > 0 ? activeGoals[0] : null;
+
+  const goalProgress = primaryGoal ? Math.min(Math.max((primaryGoal.currentAmount / primaryGoal.targetAmount) * 100, 0), 100) : 0;
+  const remainingToGoal = primaryGoal ? Math.max(primaryGoal.targetAmount - primaryGoal.currentAmount, 0) : 0;
+  const daysToGoalRemaining = (primaryGoal && dailyAverage > 0) ? Math.ceil(remainingToGoal / (dailyAverage / activeGoals.length)) : null;
 
   // Calculate real profit evolution from operations (last 7 days, cumulative)
   const chartData = React.useMemo(() => {
@@ -137,6 +154,99 @@ export default function Dashboard({ bookmakers, operations, transactions }: Dash
           </motion.div>
         ))}
       </div>
+
+      {activeGoals.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <Card className="bg-gradient-to-r from-green-900/10 to-emerald-900/10 border-green-500/20">
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <Target className="text-green-400" size={20} />
+                  <CardTitle className="text-lg font-bold text-white">
+                    Metas Ativas ({activeGoals.length})
+                  </CardTitle>
+                </div>
+                {activeGoals.length > 1 && (
+                  <Badge variant="outline" className="border-blue-500/30 text-blue-400">
+                    Lucro Dividido
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {activeGoals.slice(0, 2).map((goal) => {
+                const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
+                return (
+                  <div key={goal.id} className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white font-bold">{goal.name}</span>
+                      <span className="text-gray-400">
+                        R$ {formatCurrency(goal.currentAmount)} / R$ {formatCurrency(goal.targetAmount)}
+                      </span>
+                    </div>
+                    <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-[1px]">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        transition={{ duration: 1.5, ease: "easeOut" }}
+                        className="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-400"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+
+              {activeGoals.length > 2 && (
+                <p className="text-xs text-center text-gray-500 italic">
+                  + {activeGoals.length - 2} metas em andamento. Veja mais na aba Metas.
+                </p>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                <div className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
+                  <div className="w-10 h-10 rounded-lg bg-orange-400/10 flex items-center justify-center text-orange-400">
+                    <TrendingUp size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-medium uppercase">Média Diária Total</p>
+                    <p className="text-lg font-bold text-white">R$ {formatCurrency(dailyAverage)}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
+                  <div className="w-10 h-10 rounded-lg bg-blue-400/10 flex items-center justify-center text-blue-400">
+                    <Target size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-medium uppercase">Distribuição</p>
+                    <p className="text-lg font-bold text-white">
+                      R$ {formatCurrency(dailyAverage / activeGoals.length)}/dia por meta
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/5 md:col-span-1 lg:col-span-1">
+                  <div className="w-10 h-10 rounded-lg bg-purple-400/10 flex items-center justify-center text-purple-400">
+                    <Timer size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-medium uppercase">Foco Principal</p>
+                    <p className="text-lg font-bold text-white">
+                      {daysToGoalRemaining !== null 
+                        ? daysToGoalRemaining > 3000 ? '---' : `${daysToGoalRemaining} dias` 
+                        : 'Sem dados'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 bg-[#0f0f0f] border-white/10">

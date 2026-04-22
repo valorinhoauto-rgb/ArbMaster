@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, RotateCcw, Edit2, Landmark, History, TrendingUp, DollarSign, Ban, Info } from 'lucide-react';
+import { Plus, Trash2, RotateCcw, Edit2, Landmark, History, TrendingUp, DollarSign, Ban, Info, RefreshCw } from 'lucide-react';
 import { Bookmaker, Operation } from '@/src/types';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { motion } from 'motion/react';
 import { cn, formatCurrency } from '@/lib/utils';
 
@@ -17,15 +19,23 @@ interface BookmakersProps {
   onUpdate: (id: string, updates: Partial<Bookmaker>) => void;
   onDelete: (id: string) => void;
   onTransaction: (bookmakerId: string, amount: number, type: 'deposit' | 'withdrawal' | 'adjustment') => void;
+  onTransfer: (fromId: string, toId: string, amount: number) => void;
 }
 
-export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, onDelete, onTransaction }: BookmakersProps) {
+export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, onDelete, onTransaction, onTransfer }: BookmakersProps) {
   const [newName, setNewName] = React.useState('');
   const [newBalance, setNewBalance] = React.useState('');
   const [isAddOpen, setIsAddOpen] = React.useState(false);
+  const [isTransferOpen, setIsTransferOpen] = React.useState(false);
 
   const [transactionAmount, setTransactionAmount] = React.useState('');
   const [activeTransaction, setActiveTransaction] = React.useState<{ id: string, type: 'deposit' | 'withdrawal' | 'adjustment' } | null>(null);
+
+  const [transferData, setTransferData] = React.useState({
+    fromId: '',
+    toId: '',
+    amount: ''
+  });
 
   const activeBookies = bookmakers.filter(b => !b.isLimited);
   const limitedBookies = bookmakers.filter(b => b.isLimited);
@@ -77,7 +87,16 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
           <h2 className="text-3xl font-bold tracking-tight">Casas de Aposta</h2>
           <p className="text-gray-400">Gerencie suas bancas e casas limitadas.</p>
         </div>
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <div className="flex gap-3">
+          <Button 
+            variant="outline" 
+            className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 gap-2"
+            onClick={() => setIsTransferOpen(true)}
+          >
+            <RefreshCw size={18} />
+            Transferência
+          </Button>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger render={
             <Button className="bg-purple-600 hover:bg-purple-700 text-white gap-2">
               <Plus size={18} />
@@ -116,6 +135,7 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -209,6 +229,70 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
           </motion.div>
         ))}
       </div>
+
+      <Dialog open={isTransferOpen} onOpenChange={setIsTransferOpen}>
+        <DialogContent className="bg-[#0f0f0f] border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle>Transferência entre Casas</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Saída (De)</Label>
+              <Select value={transferData.fromId} onValueChange={(v) => setTransferData({...transferData, fromId: v})}>
+                <SelectTrigger className="bg-white/5 border-white/10">
+                  <SelectValue placeholder="Selecione a casa de origem" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1a1a] border-white/10 text-white">
+                  {activeBookies.map(b => (
+                    <SelectItem key={b.id} value={b.id}>{b.name} (R$ {formatCurrency(b.balance)})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Entrada (Para)</Label>
+              <Select value={transferData.toId} onValueChange={(v) => setTransferData({...transferData, toId: v})}>
+                <SelectTrigger className="bg-white/5 border-white/10">
+                  <SelectValue placeholder="Selecione a casa de destino" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1a1a] border-white/10 text-white">
+                  {activeBookies.map(b => (
+                    <SelectItem key={b.id} value={b.id}>{b.name} (R$ {formatCurrency(b.balance)})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="transferAmount">Valor (R$)</Label>
+              <Input 
+                id="transferAmount" 
+                type="number"
+                value={transferData.amount} 
+                onChange={(e) => setTransferData({...transferData, amount: e.target.value})}
+                placeholder="0.00"
+                className="bg-white/5 border-white/10"
+              />
+            </div>
+            <Button 
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              onClick={() => {
+                const amount = parseFloat(transferData.amount);
+                if (transferData.fromId && transferData.toId && !isNaN(amount) && amount > 0) {
+                  if (transferData.fromId === transferData.toId) {
+                    toast.error("Selecione casas diferentes para a transferência.");
+                    return;
+                  }
+                  onTransfer(transferData.fromId, transferData.toId, amount);
+                  setTransferData({ fromId: '', toId: '', amount: '' });
+                  setIsTransferOpen(false);
+                }
+              }}
+            >
+              Realizar Transferência
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!activeTransaction} onOpenChange={(open) => !open && setActiveTransaction(null)}>
         <DialogContent className="bg-[#0f0f0f] border-white/10 text-white">

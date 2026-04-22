@@ -114,10 +114,21 @@ service cloud.firestore {
 
     function isValidTransaction(data) {
       return hasRequiredFields(['type', 'amount', 'bookmakerId', 'date', 'userId']) &&
-             data.type in ['deposit', 'withdrawal', 'transfer'] &&
+             data.type in ['deposit', 'withdrawal', 'transfer', 'adjustment'] &&
              data.amount is number &&
              data.bookmakerId is string &&
              data.date is number &&
+             data.userId is string;
+    }
+
+    function isValidGoal(data) {
+      return hasRequiredFields(['name', 'targetAmount', 'currentAmount', 'createdAt', 'status', 'userId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.targetAmount is number &&
+             data.currentAmount is number &&
+             data.createdAt is number &&
+             data.status in ['active', 'completed'] &&
+             (!('completedAt' in data) || data.completedAt is number) &&
              data.userId is string;
     }
 
@@ -148,6 +159,13 @@ service cloud.firestore {
       allow read: if isDocOwner();
       allow create: if isAuthenticated() && isValidTransaction(request.resource.data) && isOwner(request.resource.data.userId);
       allow update: if isDocOwner() && isValidTransaction(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /goals/{goalId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidGoal(request.resource.data) && isOwner(request.resource.data.userId);
+      allow update: if isDocOwner() && isValidGoal(request.resource.data) && uidNotModified();
       allow delete: if isDocOwner();
     }
 
