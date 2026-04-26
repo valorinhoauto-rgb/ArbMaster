@@ -216,13 +216,14 @@ export default function App() {
         userId: user.uid
       });
 
-      const labels = {
-        deposit: 'Depósito',
-        withdrawal: 'Saque',
-        adjustment: 'Ajuste/Prejuízo'
-      };
+      let label = '';
+      if (type === 'deposit') label = 'Depósito';
+      else if (type === 'withdrawal') label = 'Saque';
+      else if (type === 'adjustment') {
+        label = amount < 0 ? 'Lucro/Bônus' : 'Ajuste/Prejuízo';
+      }
 
-      toast.success(`${labels[type]} realizado com sucesso!`);
+      toast.success(`${label} realizado com sucesso!`);
     } catch (error) {
       console.error("Error processing transaction:", error);
       toast.error("Erro ao processar transação.");

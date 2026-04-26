@@ -29,6 +29,7 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
   const [isTransferOpen, setIsTransferOpen] = React.useState(false);
 
   const [transactionAmount, setTransactionAmount] = React.useState('');
+  const [adjustmentType, setAdjustmentType] = React.useState<'loss' | 'profit'>('loss');
   const [activeTransaction, setActiveTransaction] = React.useState<{ id: string, type: 'deposit' | 'withdrawal' | 'adjustment' } | null>(null);
 
   const [transferData, setTransferData] = React.useState({
@@ -74,7 +75,12 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
 
   const handleTransaction = () => {
     if (activeTransaction && transactionAmount) {
-      onTransaction(activeTransaction.id, parseFloat(transactionAmount), activeTransaction.type);
+      let amount = parseFloat(transactionAmount);
+      if (activeTransaction.type === 'adjustment' && adjustmentType === 'profit') {
+        // App.tsx subtracts 'adjustment' amount, so to add we send negative
+        amount = -amount;
+      }
+      onTransaction(activeTransaction.id, amount, activeTransaction.type);
       setTransactionAmount('');
       setActiveTransaction(null);
     }
@@ -217,10 +223,10 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10 h-9 text-[10px] sm:text-xs"
+                      className="flex-1 border-purple-500/30 text-purple-400 hover:bg-purple-500/10 h-9 text-[10px] sm:text-xs"
                       onClick={() => setActiveTransaction({ id: bookie.id, type: 'adjustment' })}
                     >
-                      Prejuízo
+                      Ajuste
                     </Button>
                   </div>
                 </div>
@@ -299,10 +305,41 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
           <DialogHeader>
             <DialogTitle>
               {activeTransaction?.type === 'deposit' ? 'Realizar Depósito' : 
-               activeTransaction?.type === 'withdrawal' ? 'Realizar Saque' : 'Registrar Prejuízo'}
+               activeTransaction?.type === 'withdrawal' ? 'Realizar Saque' : 'Ajuste de Banca'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {activeTransaction?.type === 'adjustment' && (
+              <div className="space-y-2">
+                <Label>Tipo de Ajuste</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={adjustmentType === 'profit' ? 'default' : 'outline'}
+                    className={cn(
+                      "flex-1 gap-2",
+                      adjustmentType === 'profit' ? "bg-green-600 hover:bg-green-700" : "border-green-500/30 text-green-400"
+                    )}
+                    onClick={() => setAdjustmentType('profit')}
+                  >
+                    <TrendingUp size={16} />
+                    Lucro / Bônus
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={adjustmentType === 'loss' ? 'default' : 'outline'}
+                    className={cn(
+                      "flex-1 gap-2",
+                      adjustmentType === 'loss' ? "bg-red-600 hover:bg-red-700" : "border-red-500/30 text-red-400"
+                    )}
+                    onClick={() => setAdjustmentType('loss')}
+                  >
+                    <TrendingUp size={16} className="rotate-180" />
+                    Prejuízo
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="amount">Valor (R$)</Label>
               <Input 
@@ -319,12 +356,13 @@ export default function Bookmakers({ bookmakers, operations, onAdd, onUpdate, on
               className={`w-full ${
                 activeTransaction?.type === 'deposit' ? 'bg-green-600 hover:bg-green-700' : 
                 activeTransaction?.type === 'withdrawal' ? 'bg-blue-600 hover:bg-blue-700' : 
-                'bg-red-600 hover:bg-red-700'
+                adjustmentType === 'profit' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
               }`}
             >
               Confirmar {
                 activeTransaction?.type === 'deposit' ? 'Depósito' : 
-                activeTransaction?.type === 'withdrawal' ? 'Saque' : 'Prejuízo'
+                activeTransaction?.type === 'withdrawal' ? 'Saque' : 
+                adjustmentType === 'profit' ? 'Lucro/Bônus' : 'Prejuízo'
               }
             </Button>
           </div>
