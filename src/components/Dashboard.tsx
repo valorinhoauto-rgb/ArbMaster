@@ -63,8 +63,9 @@ export default function Dashboard({ bookmakers, operations, transactions, goals 
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
+      const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       last7Days.push({
-        dateStr: d.toISOString().split('T')[0],
+        dateStr: dStr,
         name: days[d.getDay()],
         profit: 0
       });
@@ -74,7 +75,8 @@ export default function Dashboard({ bookmakers, operations, transactions, goals 
     operations
       .filter(op => op.status === 'completed')
       .forEach(op => {
-        const opDate = new Date(op.date).toISOString().split('T')[0];
+        const d = new Date(op.date);
+        const opDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const dayIndex = last7Days.findIndex(d => d.dateStr === opDate);
         if (dayIndex !== -1) {
           last7Days[dayIndex].profit += op.profit;
@@ -85,7 +87,8 @@ export default function Dashboard({ bookmakers, operations, transactions, goals 
     transactions
       .filter(t => t.type === 'adjustment')
       .forEach(t => {
-        const tDate = new Date(t.date).toISOString().split('T')[0];
+        const d = new Date(t.date);
+        const tDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const dayIndex = last7Days.findIndex(d => d.dateStr === tDate);
         if (dayIndex !== -1) {
           last7Days[dayIndex].profit -= t.amount;
@@ -97,12 +100,20 @@ export default function Dashboard({ bookmakers, operations, transactions, goals 
     // We might want to start from the total profit before these 7 days to show true evolution
     const profitBeforeOps = operations
       .filter(op => op.status === 'completed')
-      .filter(op => new Date(op.date).toISOString().split('T')[0] < last7Days[0].dateStr)
+      .filter(op => {
+        const d = new Date(op.date);
+        const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        return dStr < last7Days[0].dateStr;
+      })
       .reduce((acc, op) => acc + op.profit, 0);
     
     const adjustmentsBefore = transactions
       .filter(t => t.type === 'adjustment')
-      .filter(t => new Date(t.date).toISOString().split('T')[0] < last7Days[0].dateStr)
+      .filter(t => {
+        const d = new Date(t.date);
+        const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        return dStr < last7Days[0].dateStr;
+      })
       .reduce((acc, t) => acc + t.amount, 0);
     
     cumulative = profitBeforeOps - adjustmentsBefore;
@@ -114,7 +125,7 @@ export default function Dashboard({ bookmakers, operations, transactions, goals 
         profit: Number(cumulative.toFixed(2))
       };
     });
-  }, [operations]);
+  }, [operations, transactions]);
 
   const stats = [
     { title: 'Banca Total', value: `R$ ${formatCurrency(totalBalance)}`, icon: Wallet, color: 'text-blue-400', bg: 'bg-blue-400/10' },
