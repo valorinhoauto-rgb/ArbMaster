@@ -24,6 +24,14 @@ export interface Operation {
   profitPercentage: number;
   status: 'pending' | 'completed' | 'void';
   result?: 'win1' | 'win2' | 'void';
+  settledAt?: number;
+  userId: string;
+}
+
+export interface HistoryAdjustment {
+  id: string;
+  monthKey: string; // YYYY-MM
+  targetFinalValue: number;
   userId: string;
 }
 

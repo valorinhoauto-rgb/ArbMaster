@@ -179,6 +179,22 @@ service cloud.firestore {
       allow write: if isOwner(userId) && isValidId(userId) && isValidSettings(request.resource.data);
     }
 
+    function isValidHistoryAdjustment(data) {
+      return data.keys().hasAll(['monthKey', 'targetFinalValue', 'userId']) &&
+             data.monthKey is string && data.monthKey.matches('^[0-9]{4}-[0-9]{2}$') &&
+             data.targetFinalValue is number &&
+             data.userId is string;
+    }
+
+    match /history_adjustments/{id} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow write: if isAuthenticated() && 
+                   isValidId(id) && 
+                   isValidHistoryAdjustment(request.resource.data) && 
+                   request.resource.data.userId == request.auth.uid &&
+                   (resource == null || resource.data.userId == request.auth.uid);
+    }
+
     // Default deny
     match /{document=**} {
       allow read, write: if false;

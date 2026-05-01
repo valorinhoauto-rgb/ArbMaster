@@ -7,7 +7,7 @@ import React from 'react';
 import { Toaster, toast } from 'sonner';
 import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc } from './firebase';
 import type { User } from './firebase';
-import { Bookmaker, Operation, Transaction, Goal } from './types';
+import { Bookmaker, Operation, Transaction, Goal, HistoryAdjustment } from './types';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Bookmakers from './components/Bookmakers';
@@ -28,6 +28,7 @@ export default function App() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [geminiKey, setGeminiKey] = React.useState<string>('');
   const [goals, setGoals] = React.useState<Goal[]>([]);
+  const [historyAdjustments, setHistoryAdjustments] = React.useState<HistoryAdjustment[]>([]);
 
   // Auth Listener
   React.useEffect(() => {
@@ -93,12 +94,21 @@ export default function App() {
       }
     );
 
+    const unsubAdjustments = onSnapshot(
+      query(collection(db, 'history_adjustments'), where('userId', '==', uid)),
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HistoryAdjustment));
+        setHistoryAdjustments(data);
+      }
+    );
+
     return () => {
       unsubBookies();
       unsubOps();
       unsubTrans();
       unsubSettings();
       unsubGoals();
+      unsubAdjustments();
     };
   }, [user?.uid]);
 
@@ -153,13 +163,23 @@ export default function App() {
   const addBookmaker = async (name: string, balance: number) => {
     if (!user) return;
     try {
-      await addDoc(collection(db, 'bookmakers'), {
+      const docRef = await addDoc(collection(db, 'bookmakers'), {
         name,
         balance,
         isLimited: false,
         createdAt: Date.now(),
         userId: user.uid
       });
+
+      // Add actual transaction for initial balance
+      await addDoc(collection(db, 'transactions'), {
+        type: 'deposit',
+        amount: balance,
+        bookmakerId: docRef.id,
+        date: Date.now(),
+        userId: user.uid
+      });
+
       toast.success("Casa de aposta adicionada!");
     } catch (error) {
       console.error("Error adding bookmaker:", error);
@@ -331,7 +351,8 @@ export default function App() {
       // 3. Mark operation as completed
       batch.update(doc(db, 'operations', id), { 
         status: result === 'void' ? 'void' : 'completed',
-        result 
+        result,
+        settledAt: Date.now()
       });
 
       await batch.commit();
@@ -490,6 +511,7 @@ export default function App() {
           <MonthlyHistory 
             operations={operations}
             transactions={transactions}
+            adjustments={historyAdjustments}
           />
         )}
         {activeTab === 'metas' && (
