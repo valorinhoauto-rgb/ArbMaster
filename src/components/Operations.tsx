@@ -359,17 +359,35 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                 <div key={op.tempId} className="p-6 rounded-xl bg-white/5 border border-white/10 space-y-4">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                      <Input 
-                        value={op.bookmaker1} 
-                        onChange={(e) => updateExtractedOp(op.tempId, { bookmaker1: e.target.value })}
-                        className="h-8 w-32 bg-purple-600/20 border-purple-500/30 text-white font-bold"
-                      />
+                      <Select 
+                        value={bookmakers.find(b => b.name.toLowerCase() === op.bookmaker1.toLowerCase())?.name || op.bookmaker1} 
+                        onValueChange={(v) => updateExtractedOp(op.tempId, { bookmaker1: v })}
+                      >
+                        <SelectTrigger className="h-8 w-40 bg-purple-600/20 border-purple-500/30 text-white font-bold">
+                          <SelectValue placeholder="Casa 1" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1a1a] border-white/10 text-white">
+                          <SelectItem value="Não identificado">Não identificado</SelectItem>
+                          {bookmakers.map(b => (
+                            <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <ArrowRight size={14} className="text-gray-500" />
-                      <Input 
-                        value={op.bookmaker2} 
-                        onChange={(e) => updateExtractedOp(op.tempId, { bookmaker2: e.target.value })}
-                        className="h-8 w-32 bg-purple-600/20 border-purple-500/30 text-white font-bold"
-                      />
+                      <Select 
+                        value={bookmakers.find(b => b.name.toLowerCase() === op.bookmaker2.toLowerCase())?.name || op.bookmaker2} 
+                        onValueChange={(v) => updateExtractedOp(op.tempId, { bookmaker2: v })}
+                      >
+                        <SelectTrigger className="h-8 w-40 bg-purple-600/20 border-purple-500/30 text-white font-bold">
+                          <SelectValue placeholder="Casa 2" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1a1a] border-white/10 text-white">
+                          <SelectItem value="Não identificado">Não identificado</SelectItem>
+                          {bookmakers.map(b => (
+                            <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExtractedOps(prev => prev.filter(item => item.tempId !== op.tempId))}>
                       <X size={18} />
