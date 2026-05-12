@@ -29,6 +29,24 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
   const [extractedOps, setExtractedOps] = React.useState<(ExtractedOperation & { tempId: string })[]>([]);
+  const updateExtractedOp = (tempId: string, updates: Partial<ExtractedOperation>) => {
+    setExtractedOps(prev => prev.map(op => {
+      if (op.tempId === tempId) {
+        const newOp = { ...op, ...updates };
+        const s1 = typeof newOp.stake1 === 'string' ? parseFloat(newOp.stake1) : newOp.stake1;
+        const s2 = typeof newOp.stake2 === 'string' ? parseFloat(newOp.stake2) : newOp.stake2;
+        const o1 = typeof newOp.odds1 === 'string' ? parseFloat(newOp.odds1) : newOp.odds1;
+        const total = (s1 || 0) + (s2 || 0);
+        
+        if (total > 0 && o1 > 0) {
+            newOp.profit = (s1 * o1) - total;
+            newOp.profitPercentage = parseFloat(((newOp.profit / total) * 100).toFixed(2));
+        }
+        return newOp;
+      }
+      return op;
+    }));
+  };
   const [selectedOp, setSelectedOp] = React.useState<Operation | null>(null);
   const [editingOp, setEditingOp] = React.useState<Operation | null>(null);
   const [showAllMonths, setShowAllMonths] = React.useState(false);
@@ -341,9 +359,17 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                 <div key={op.tempId} className="p-6 rounded-xl bg-white/5 border border-white/10 space-y-4">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                      <Badge className="bg-purple-600">{op.bookmaker1}</Badge>
+                      <Input 
+                        value={op.bookmaker1} 
+                        onChange={(e) => updateExtractedOp(op.tempId, { bookmaker1: e.target.value })}
+                        className="h-8 w-32 bg-purple-600/20 border-purple-500/30 text-white font-bold"
+                      />
                       <ArrowRight size={14} className="text-gray-500" />
-                      <Badge className="bg-purple-600">{op.bookmaker2}</Badge>
+                      <Input 
+                        value={op.bookmaker2} 
+                        onChange={(e) => updateExtractedOp(op.tempId, { bookmaker2: e.target.value })}
+                        className="h-8 w-32 bg-purple-600/20 border-purple-500/30 text-white font-bold"
+                      />
                     </div>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExtractedOps(prev => prev.filter(item => item.tempId !== op.tempId))}>
                       <X size={18} />
@@ -351,10 +377,32 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <p className="text-xs text-gray-500 uppercase font-bold">Evento</p>
-                      <p className="font-bold text-lg">{op.event}</p>
-                      <p className="text-sm text-gray-400">{op.market}</p>
+                    <div className="space-y-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-gray-500 uppercase font-bold">Evento</Label>
+                        <Input 
+                          value={op.event} 
+                          onChange={(e) => updateExtractedOp(op.tempId, { event: e.target.value })}
+                          className="h-9 bg-white/5 border-white/10"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-gray-500 uppercase font-bold">Mercado</Label>
+                        <Input 
+                          value={op.market} 
+                          onChange={(e) => updateExtractedOp(op.tempId, { market: e.target.value })}
+                          className="h-8 bg-white/5 border-white/10 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-gray-500 uppercase font-bold">Data e Hora</Label>
+                        <Input 
+                          type="datetime-local"
+                          value={new Date(op.date).toISOString().slice(0, 16)} 
+                          onChange={(e) => updateExtractedOp(op.tempId, { date: new Date(e.target.value).getTime() })}
+                          className="h-9 bg-white/5 border-white/10 text-xs scheme-dark"
+                        />
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
@@ -369,20 +417,70 @@ export default function Operations({ operations, bookmakers, onAdd, onUpdate, on
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/5">
-                    <div className="p-3 rounded-lg bg-white/5 space-y-1">
-                      <p className="text-xs text-gray-500 font-bold">{op.bookmaker1}</p>
-                      <p className="text-sm">{op.selection1}</p>
-                      <div className="flex justify-between text-xs">
-                        <span>Odd: <span className="text-white font-bold">{op.odds1}</span></span>
-                        <span>Stake: <span className="text-white font-bold">R$ {formatCurrency(op.stake1)}</span></span>
+                    <div className="p-3 rounded-lg bg-white/5 space-y-3">
+                      <p className="text-xs text-gray-500 font-bold uppercase">{op.bookmaker1}</p>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-gray-500 uppercase">Seleção</Label>
+                        <Input 
+                          value={op.selection1} 
+                          onChange={(e) => updateExtractedOp(op.tempId, { selection1: e.target.value })}
+                          className="h-7 text-xs bg-white/5 border-white/10"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-gray-500 uppercase whitespace-nowrap">Odd</Label>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={op.odds1} 
+                            onChange={(e) => updateExtractedOp(op.tempId, { odds1: parseFloat(e.target.value) || 0 })}
+                            className="h-7 text-xs font-bold bg-white/5 border-white/10"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-gray-500 uppercase whitespace-nowrap">Stake</Label>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={op.stake1} 
+                            onChange={(e) => updateExtractedOp(op.tempId, { stake1: parseFloat(e.target.value) || 0 })}
+                            className="h-7 text-xs font-bold bg-white/5 border-white/10"
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div className="p-3 rounded-lg bg-white/5 space-y-1">
-                      <p className="text-xs text-gray-500 font-bold">{op.bookmaker2}</p>
-                      <p className="text-sm">{op.selection2}</p>
-                      <div className="flex justify-between text-xs">
-                        <span>Odd: <span className="text-white font-bold">{op.odds2}</span></span>
-                        <span>Stake: <span className="text-white font-bold">R$ {formatCurrency(op.stake2)}</span></span>
+                    <div className="p-3 rounded-lg bg-white/5 space-y-3">
+                      <p className="text-xs text-gray-500 font-bold uppercase">{op.bookmaker2}</p>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-gray-500 uppercase">Seleção</Label>
+                        <Input 
+                          value={op.selection2} 
+                          onChange={(e) => updateExtractedOp(op.tempId, { selection2: e.target.value })}
+                          className="h-7 text-xs bg-white/5 border-white/10"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-gray-500 uppercase whitespace-nowrap">Odd</Label>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={op.odds2} 
+                            onChange={(e) => updateExtractedOp(op.tempId, { odds2: parseFloat(e.target.value) || 0 })}
+                            className="h-7 text-xs font-bold bg-white/5 border-white/10"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-gray-500 uppercase whitespace-nowrap">Stake</Label>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={op.stake2} 
+                            onChange={(e) => updateExtractedOp(op.tempId, { stake2: parseFloat(e.target.value) || 0 })}
+                            className="h-7 text-xs font-bold bg-white/5 border-white/10"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
