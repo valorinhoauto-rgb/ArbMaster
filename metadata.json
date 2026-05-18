@@ -1,5 +1,6 @@
 {
   "name": "ArbMaster - Gestão de Apostas",
   "description": "Sistema avançado para controle de arbitragem em apostas esportivas com integração de IA para leitura de comprovantes.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

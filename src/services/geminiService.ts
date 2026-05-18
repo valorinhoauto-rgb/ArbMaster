@@ -24,10 +24,17 @@ export async function extractOperationFromImage(base64Image: string, mimeType: s
       return null;
     }
     
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ 
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
     
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-3.1-flash-lite",
       contents: [
         {
           inlineData: {
